@@ -1,145 +1,220 @@
 # Weevil
 
-A comprehensive World of Warcraft Retail addon that combines the best features of automation addons like Leatrix Plus with information display features like Titan Panel.
+A comprehensive World of Warcraft Retail addon that combines extensive automation features (inspired by Leatrix Plus) with a powerful information display bar (inspired by Titan Panel).
 
-## Features
+## 🎮 Features Overview
 
-### 🤖 Automation Module
-- **Auto Accept Quests**: Automatically accept quests from NPCs
-- **Auto Turn-in Quests**: Automatically complete quests
-- **Auto Repair**: Automatically repair gear at vendors (with guild repair option)
-- **Auto Sell Junk**: Automatically sell gray items to vendors
-- **Auto Accept Resurrect**: Accept resurrection requests automatically
-- **Auto Skip Cutscenes**: Skip cinematics and movies automatically
-- **Auto Accept Summon**: Accept warlock summons automatically
-- **Auto Release in BGs**: Automatically release spirit in battlegrounds
+### 🤖 Automation Module (25+ Features)
 
-### 📊 Info Bar Module
-Displays a customizable information bar (Titan Panel style) with:
-- **FPS Display**: Current frames per second
-- **Latency Display**: Home and world latency (ms)
-- **Gold Display**: Current gold with icon
-- **Bag Space**: Free bag slots / total slots
-- **Durability**: Average item durability percentage (color-coded)
-- **Location**: Current zone and coordinates
-- **Clock**: Server time and local time
-- **Memory Usage**: Addon memory consumption
+**Quest Automation:**
+- Auto Accept Quests - Automatically accept quests from NPCs
+- Auto Turn-in Quests - Automatically complete quests
+- Auto Gossip - Skip NPC dialogue automatically
 
-The info bar can be:
-- Positioned at top or bottom of screen
-- Toggled on/off with a command
-- Customized with background transparency
-- Each element can be shown/hidden individually
+**Merchant Automation:**
+- Auto Repair - Automatically repair gear at vendors
+- Guild Repair - Use guild bank funds for repairs
+- Auto Sell Junk - Automatically sell gray items
+- Auto Sell Grey - Sell all grey quality items
 
-### 💬 Chat Module
-- **Chat Copy**: Copy chat text with Shift+Right-Click
-- **Timestamps**: Show timestamps in chat messages
-- **URL Detection**: Detect and highlight URLs in chat
-- **Class Colored Names**: Color player names by class in chat
-- **Sticky Channels**: Remember the last chat channel used
+**Loot Automation:**
+- Faster Looting - Instant loot delay (0ms)
+- Enhanced Auto Loot - Improved auto loot speed
+- Auto Greed Greens - Automatically greed on uncommon items
+- Auto Greed Blues - Automatically greed on rare items
 
-### 🎨 UI Module
-- **Hide Error Frame**: Hide the red error text
-- **Faster Auto Loot**: Instant auto looting
-- **Screenshot Achievements**: Automatically screenshot when earning achievements
-- **Enhanced Tooltips**: Show item level and spell IDs in tooltips
-- **Confirm Loot Roll**: Require confirmation for passing on loot
-- **Hide Talking Head**: Hide the talking head frame
+**Social Automation:**
+- Auto Accept Resurrect - Accept resurrection requests automatically
+- Auto Accept Summon - Accept warlock summons automatically
+- Auto Invite - Auto invite from whispers (configurable keyword)
+- Auto Decline Duels - Automatically decline duel requests
+- Auto Decline Party - Automatically decline party invites
 
-## Installation
+**Combat Automation:**
+- Auto Release in BGs - Automatically release spirit in battlegrounds
+- Auto Skinning - Automatic skinning of corpses
+
+**UI Automation:**
+- Auto Skip Cutscenes - Skip cinematics and movies automatically
+- Hide Zone Text - Hide zone change announcements
+- Hide Boss Emotes - Hide boss emote frame
+- Hide Error Messages - Hide the red error text frame
+- Auto Confirm Bind - Auto confirm bind on equip
+- Auto Confirm Disenchant - Auto confirm disenchant
+
+**Miscellaneous:**
+- Fast Waypoints - Faster waypoint calculation
+- Dismount in Water - Automatically dismount when entering water
+- Auto Equipment Compare - Always show equipment comparisons
+- Auto Accept Party Sync - Automatically accept party sync requests
+
+### 📊 Info Bar Module (25+ Displays)
+
+**Performance Displays:**
+- FPS Display - Current frames per second (color-coded: green/yellow/red)
+- Latency Display - Home and world latency in ms (color-coded)
+- Memory Usage - Addon memory consumption
+
+**Character Displays:**
+- Bag Space - Free bag slots / total slots (color-coded)
+- Durability - Average item durability percentage (color-coded)
+- XP Progress - Experience bar with percentage (rested XP indicator)
+- Reputation - Watched faction reputation progress
+- Item Level - Average equipped item level
+- Talent Spec - Current specialization name
+- Movement Speed - Player movement speed percentage
+
+**Currency Displays:**
+- Gold - Current character gold with icon
+- Realm Gold - Total gold across all characters
+- Currencies - Tracked currency displays
+
+**Location Displays:**
+- Location - Current zone and subzone
+- Coordinates - Player X, Y coordinates
+- Zone Level - Zone level range information
+
+**Time Displays:**
+- Game Time - Server/realm time
+- Local Time - Your local computer time
+- 24-Hour Format - Toggle between 12h/24h format
+
+**Social Displays:**
+- Friends Online - Number of online friends (Battle.net + regular)
+- Guild Online - Number of online guild members
+- Mail Indicator - New mail notification
+
+**Instance Displays:**
+- Instance Difficulty - Current dungeon/raid difficulty (N/H/M)
+- Saved Instances - Instance lockout information
+- Quest Log - Current quest count / maximum quests
+
+**Tracking Displays:**
+- Tracking - Current tracking type
+- Quest Tracking - Active quest objectives
+
+### 🎨 Custom Beautiful UI
+
+The addon features a completely custom, professionally designed interface:
+
+- **Modern Gradient Design** - Sleek backgrounds with themed accent colors
+- **Category Navigation** - Beautiful icon-based navigation:
+  - 🔧 Automation (Green theme)
+  - 📊 Info Bar (Blue theme)  
+  - 🎨 UI Tweaks (Orange theme)
+  - 📁 Profiles (Purple theme)
+- **Scrollable Content** - Smooth scrolling panels for all options
+- **Section Organization** - Logically grouped settings
+- **Professional Tooltips** - Helpful descriptions on hover
+- **No Generic UI** - Custom design, not basic AceConfig
+
+### 🖼️ UI Module
+
+- Enhanced Tooltips - Show item level and spell IDs
+- Screenshot Achievements - Auto screenshot on achievement earned
+- Faster Auto Loot - Instant auto looting
+- Confirm Loot Roll - Require confirmation for passing on loot
+- Hide Talking Head - Hide the talking head frame
+- Hide Error Frame - Hide red error messages
+
+## 📦 Installation
 
 1. Download the latest release
 2. Extract the `Weevil` folder to your `World of Warcraft\_retail_\Interface\AddOns\` directory
 3. Restart World of Warcraft or reload UI with `/reload`
 
-## Usage
+## 🎯 Usage
 
 ### Commands
-- `/weevil` or `/wv` - Open options panel
+- `/weevil` or `/wv` - Open beautiful custom options panel
 - `/weevil infobar` - Toggle the info bar
 - `/weevil help` - Show available commands
 
 ### Minimap Icon
-- **Left-Click**: Open options panel
+- **Left-Click**: Open custom options panel
 - **Right-Click**: Toggle info bar
 
 ### Configuration
-All features can be configured through the in-game options panel:
+All 50+ features can be configured through the stunning in-game custom UI:
 - Type `/weevil` to open the options
-- Or access via ESC > Interface > AddOns > Weevil
+- Navigate through categories using the icon buttons
+- Toggle any feature on/off with beautiful checkboxes
+- All settings save automatically per character profile
 
-## Compatibility
+## ✨ The Info Bar
+
+The info bar displays at the top (or bottom) of your screen with:
+- **Three Sections**: Left (Performance & Character), Center (Location & Time), Right (Social & Currency)
+- **Color Coding**: Performance metrics change color based on status
+- **Real-time Updates**: 1-second refresh cycle
+- **Fully Customizable**: Show/hide any display element
+- **Professional Design**: Modern styling with borders and accents
+
+## 🔧 Compatibility
 
 - **WoW Version**: Retail (The War Within - 11.0.2, Interface 110002)
 - **Libraries**: Uses Ace3 libraries for robust functionality
 - **Performance**: Optimized for minimal memory usage and CPU impact
+- **No Taint**: Clean, secure code with no taint issues
 
-## Localization
+## 🌍 Localization
 
 Currently supported languages:
-- English (enUS) - Default
-- German (deDE)
+- English (enUS) - Complete
+- German (deDE) - Complete
 
-## Technical Details
+## 📊 Technical Details
 
 ### Structure
 ```
 Weevil/
-├── Weevil.toc          # TOC file
-├── Weevil.lua          # Main addon file
-├── Modules/            # Feature modules
-│   ├── Automation.lua
-│   ├── InfoBar.lua
-│   ├── Chat.lua
-│   └── UI.lua
-├── Config/             # Configuration
-│   └── Options.lua
-├── Libs/               # Library dependencies
-├── Locales/            # Translations
+├── Weevil.toc                # TOC file
+├── Weevil.lua                # Main addon file
+├── Modules/                  # Feature modules
+│   ├── Automation.lua        # 25+ automation features
+│   ├── InfoBar.lua           # 25+ info displays
+│   └── UI.lua                # UI improvements
+├── Config/                   # Configuration
+│   ├── CustomUI.lua          # Beautiful custom interface
+│   └── Options.lua           # AceConfig fallback
+├── Libs/                     # Library dependencies (13 libs)
+├── Locales/                  # Translations
 │   ├── enUS.lua
 │   └── deDE.lua
-└── Media/              # Textures and media files
+└── Media/                    # Textures and media files
 ```
 
-### Libraries Used
-- LibStub
-- CallbackHandler-1.0
-- AceAddon-3.0
-- AceDB-3.0
-- AceDBOptions-3.0
-- AceEvent-3.0
-- AceConsole-3.0
-- AceGUI-3.0
-- AceConfig-3.0
-- AceLocale-3.0
-- LibDataBroker-1.1
-- LibDBIcon-1.0
-- LibQTip-1.0
+### Features Count
+- **50+ Total Features**
+- **25+ Automation Features**
+- **25+ InfoBar Displays**
+- **6 UI Enhancements**
+- **13 Included Libraries**
+- **2 Language Localizations**
 
-## Support
+## 🎨 What Makes This Addon Special
 
-If you encounter any issues or have feature requests, please open an issue on the GitHub repository.
+1. **Not Generic** - Custom designed UI, not cookie-cutter AceConfig
+2. **Comprehensive** - Combines multiple addon types into one
+3. **Beautiful** - Professional styling with modern design principles
+4. **Powerful** - 50+ features inspired by the best QoL addons
+5. **Lightweight** - Despite the features, optimized for performance
+6. **Organized** - Everything logically grouped and easy to find
 
-## License
+## 💡 Inspired By
 
-MIT License - See LICENSE file for details
+- **Leatrix Plus** - Automation features and quality of life improvements
+- **Titan Panel** - Information display bar and data broker integration
 
-## Credits
-
-**Author**: JugoBetrugoTV
-
-Inspired by:
-- Leatrix Plus (automation features)
-- Titan Panel (information display)
-
-## Changelog
+## 📝 Changelog
 
 ### Version 1.0.0
-- Initial release
-- Full automation module with quest handling, repairs, and more
-- Information bar with FPS, latency, gold, bags, durability, location, time, and memory
-- Chat enhancements including copy, timestamps, URL detection, and class colors
-- UI tweaks including tooltips, auto-loot, screenshots, and talking head hiding
-- Full configuration panel with profile support
-- Minimap icon with LibDBIcon
+- Initial release with 50+ features
+- Full automation module (25+ features)
+- Comprehensive information bar (25+ displays)
+- Beautiful custom UI interface
+- UI tweaks and enhancements
+- Full configuration with profile support
 - English and German localization
+- Minimap icon integration
+- Professional color-coded displays

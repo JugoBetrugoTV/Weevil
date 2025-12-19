@@ -1,0 +1,26 @@
+# WoW Addon Development
+*.bak
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+*.tmp
+*.temp
+
+# Build artifacts
+*.zip
+*.7z
+
+# SavedVariables (for testing)
+WTF/
+
+# Package manager
+node_modules/
+package-lock.json

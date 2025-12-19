@@ -199,22 +199,18 @@ function Automation:MERCHANT_SHOW()
 	-- Auto sell junk
 	if self.db.profile.autoSellJunk then
 		local totalValue = 0
-		for bag = 0, NUM_BAG_SLOTS do
-			for slot = 1, GetContainerNumSlots(bag) or C_Container.GetContainerNumSlots(bag) do
-				local itemLink = GetContainerItemLink(bag, slot) or C_Container.GetContainerItemLink(bag, slot)
+		local numBags = NUM_TOTAL_EQUIPPED_BAG_SLOTS or 4
+		for bag = 0, numBags do
+			local numSlots = C_Container.GetContainerNumSlots(bag) or 0
+			for slot = 1, numSlots do
+				local itemLink = C_Container.GetContainerItemLink(bag, slot)
 				if itemLink then
 					local _, _, quality, _, _, _, _, _, _, _, vendorPrice = GetItemInfo(itemLink)
 					if quality == 0 and vendorPrice and vendorPrice > 0 then -- Gray quality
-						local itemInfo = GetContainerItemInfo(bag, slot) or C_Container.GetContainerItemInfo(bag, slot)
+						local itemInfo = C_Container.GetContainerItemInfo(bag, slot)
 						local count = itemInfo and (itemInfo.stackCount or itemInfo.count) or 1
 						totalValue = totalValue + (vendorPrice * count)
-						
-						-- Use modern or classic API based on availability
-						if C_Container and C_Container.UseContainerItem then
-							C_Container.UseContainerItem(bag, slot)
-						else
-							UseContainerItem(bag, slot)
-						end
+						C_Container.UseContainerItem(bag, slot)
 					end
 				end
 			end

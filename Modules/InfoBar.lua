@@ -11,8 +11,16 @@ InfoBar.defaults = {
 	position = "TOP", -- TOP or BOTTOM
 	barHeight = 24,
 	fontSize = 12,
+	barScale = 1.0,
+	offsetFromEdge = 0,
+	autoHideInCombat = false,
+	lockPosition = true,
+	
+	-- Colors
 	bgColor = {r = 0, g = 0, b = 0, a = 0.7},
 	borderColor = {r = 0.3, g = 0.3, b = 0.3, a = 1},
+	accentColor = {r = 0.2, g = 0.4, b = 0.8, a = 0.8},
+	useClassColor = false,
 	
 	-- Performance displays
 	showFPS = true,
@@ -97,8 +105,9 @@ function InfoBar:CreateBar()
 	bar:SetFrameStrata("MEDIUM")
 	bar:SetFrameLevel(10)
 	bar:SetHeight(self.db.profile.barHeight or 24)
-	bar:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
-	bar:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, 0)
+	bar:SetScale(self.db.profile.barScale or 1.0)
+	bar:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, -(self.db.profile.offsetFromEdge or 0))
+	bar:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, -(self.db.profile.offsetFromEdge or 0))
 	
 	-- Background with gradient
 	bar.bg = bar:CreateTexture(nil, "BACKGROUND")
@@ -112,7 +121,7 @@ function InfoBar:CreateBar()
 	bar.topBorder:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, 0)
 	bar.topBorder:SetColorTexture(0.3, 0.3, 0.3, 1)
 	
-	-- Bottom border with glow
+	-- Bottom border with glow (accent color)
 	bar.bottomBorder = bar:CreateTexture(nil, "ARTWORK")
 	bar.bottomBorder:SetHeight(2)
 	bar.bottomBorder:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
@@ -137,6 +146,12 @@ function InfoBar:CreateBar()
 	bar.rightText:SetJustifyH("RIGHT")
 	bar.rightText:SetFont("Fonts\\FRIZQT__.TTF", self.db.profile.fontSize or 12, "OUTLINE")
 	
+	-- Register for combat events if auto-hide is enabled
+	if self.db.profile.autoHideInCombat then
+		self:RegisterEvent("PLAYER_REGEN_DISABLED") -- Enter combat
+		self:RegisterEvent("PLAYER_REGEN_ENABLED")  -- Leave combat
+	end
+	
 	self.bar = bar
 	self:UpdateBarAppearance()
 	bar:Hide()
@@ -145,17 +160,48 @@ end
 function InfoBar:UpdateBarAppearance()
 	if not self.bar then return end
 	
+	-- Update background color
 	local c = self.db.profile.bgColor
 	self.bar.bg:SetColorTexture(c.r, c.g, c.b, c.a)
 	
+	-- Update border color
+	local bc = self.db.profile.borderColor
+	self.bar.topBorder:SetColorTexture(bc.r, bc.g, bc.b, bc.a)
+	
+	-- Update accent color (use class color if enabled)
+	local ac = self.db.profile.accentColor
+	if self.db.profile.useClassColor then
+		local _, class = UnitClass("player")
+		if class then
+			local classColor = RAID_CLASS_COLORS[class]
+			if classColor then
+				ac = {r = classColor.r, g = classColor.g, b = classColor.b, a = 0.8}
+			end
+		end
+	end
+	self.bar.bottomBorder:SetColorTexture(ac.r, ac.g, ac.b, ac.a)
+	
+	-- Update height
+	self.bar:SetHeight(self.db.profile.barHeight or 24)
+	
+	-- Update scale
+	self.bar:SetScale(self.db.profile.barScale or 1.0)
+	
+	-- Update font sizes
+	local fontSize = self.db.profile.fontSize or 12
+	self.bar.leftText:SetFont("Fonts\\FRIZQT__.TTF", fontSize, "OUTLINE")
+	self.bar.centerText:SetFont("Fonts\\FRIZQT__.TTF", fontSize, "OUTLINE")
+	self.bar.rightText:SetFont("Fonts\\FRIZQT__.TTF", fontSize, "OUTLINE")
+	
 	-- Update position
+	local offset = self.db.profile.offsetFromEdge or 0
 	self.bar:ClearAllPoints()
 	if self.db.profile.position == "TOP" then
-		self.bar:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, 0)
-		self.bar:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, 0)
+		self.bar:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, -offset)
+		self.bar:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", 0, -offset)
 	else
-		self.bar:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
-		self.bar:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
+		self.bar:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, offset)
+		self.bar:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, offset)
 	end
 end
 
@@ -202,6 +248,20 @@ function InfoBar:PLAYER_ENTERING_WORLD()
 	self:UpdateDisplay()
 end
 
+function InfoBar:PLAYER_REGEN_DISABLED()
+	-- Entering combat
+	if self.db.profile.autoHideInCombat and self.bar then
+		self.bar:Hide()
+	end
+end
+
+function InfoBar:PLAYER_REGEN_ENABLED()
+	-- Leaving combat
+	if self.db.profile.autoHideInCombat and self.bar and self.db.profile.enabled then
+		self.bar:Show()
+	end
+end
+
 function InfoBar:UpdateDisplay()
 	if not self.bar or not self.bar:IsShown() then return end
 	
@@ -237,10 +297,12 @@ function InfoBar:UpdateDisplay()
 	-- Bag Space
 	if self.db.profile.showBags then
 		local free, total = 0, 0
-		for i = 0, NUM_BAG_SLOTS do
-			local numSlots = GetContainerNumSlots(i) or (C_Container and C_Container.GetContainerNumSlots(i)) or 0
+		-- Use NUM_TOTAL_EQUIPPED_BAG_SLOTS (WoW 11.0) or fallback to 4
+		local numBags = NUM_TOTAL_EQUIPPED_BAG_SLOTS or 4
+		for i = 0, numBags do
+			local numSlots = C_Container.GetContainerNumSlots(i) or 0
 			total = total + numSlots
-			local freeSlots = GetContainerNumFreeSlots(i) or (C_Container and C_Container.GetContainerNumFreeSlots(i)) or 0
+			local freeSlots = C_Container.GetContainerNumFreeSlots(i) or 0
 			free = free + freeSlots
 		end
 		local percent = total > 0 and (free / total) * 100 or 0
@@ -389,7 +451,15 @@ function InfoBar:UpdateDisplay()
 	-- Friends Online
 	if self.db.profile.showFriends then
 		local _, numOnline = C_FriendList.GetNumFriends()
-		local numBNetOnline = C_BattleNet.GetFriendNumGameAccounts()
+		-- Count BNet friends properly
+		local numBNetOnline = 0
+		local _, numBNetTotal = BNGetNumFriends()
+		for i = 1, numBNetTotal do
+			local accountInfo = C_BattleNet.GetFriendAccountInfo(i)
+			if accountInfo and accountInfo.gameAccountInfo and accountInfo.gameAccountInfo.isOnline then
+				numBNetOnline = numBNetOnline + 1
+			end
+		end
 		local totalOnline = numOnline + numBNetOnline
 		local color = totalOnline > 0 and "88ff88" or "888888"
 		table.insert(rightInfo, string.format("|cff00ccff[Friends]|r |cff%s%d|r", color, totalOnline))

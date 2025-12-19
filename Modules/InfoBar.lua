@@ -86,8 +86,27 @@ function InfoBar:OnEnable()
 	
 	if self.db.profile.enabled then
 		self:ShowBar()
-		self:RegisterEvent("PLAYER_ENTERING_WORLD")
+		self:RegisterEvents()
 		self:StartUpdates()
+	end
+end
+
+function InfoBar:RegisterEvents()
+	self:RegisterEvent("PLAYER_ENTERING_WORLD")
+	self:RegisterEvent("PLAYER_MONEY") -- For gold updates
+	self:RegisterEvent("BAG_UPDATE") -- For bag updates
+	self:RegisterEvent("UPDATE_INVENTORY_DURABILITY") -- For durability updates
+	self:RegisterEvent("PLAYER_XP_UPDATE") -- For XP updates
+	self:RegisterEvent("UPDATE_FACTION") -- For reputation updates
+	self:RegisterEvent("FRIENDLIST_UPDATE") -- For friend updates
+	self:RegisterEvent("GUILD_ROSTER_UPDATE") -- For guild updates
+	self:RegisterEvent("UPDATE_INSTANCE_INFO") -- For instance difficulty
+	self:RegisterEvent("MAIL_INBOX_UPDATE") -- For mail indicator
+	
+	-- Register combat events if auto-hide is enabled
+	if self.db.profile.autoHideInCombat then
+		self:RegisterEvent("PLAYER_REGEN_DISABLED") -- Enter combat
+		self:RegisterEvent("PLAYER_REGEN_ENABLED")  -- Leave combat
 	end
 end
 
@@ -231,6 +250,15 @@ end
 function InfoBar:StartUpdates()
 	if self.updateTimer then return end
 	
+	-- Cache for less frequently changing data
+	self.cache = {
+		bags = {lastUpdate = 0, free = 0, total = 0},
+		durability = {lastUpdate = 0, percent = 0},
+		itemLevel = {lastUpdate = 0, avgIlvl = 0},
+		friends = {lastUpdate = 0, count = 0},
+		guild = {lastUpdate = 0, online = 0, total = 0},
+	}
+	
 	self.updateTimer = C_Timer.NewTicker(1, function()
 		self:UpdateDisplay()
 	end)
@@ -262,9 +290,78 @@ function InfoBar:PLAYER_REGEN_ENABLED()
 	end
 end
 
+function InfoBar:PLAYER_MONEY()
+	-- Instant update for gold changes
+	self:UpdateDisplay()
+end
+
+function InfoBar:BAG_UPDATE()
+	-- Invalidate bag cache and update
+	if self.cache then
+		self.cache.bags.lastUpdate = 0
+	end
+	self:UpdateDisplay()
+end
+
+function InfoBar:UPDATE_INVENTORY_DURABILITY()
+	-- Invalidate durability cache and update
+	if self.cache then
+		self.cache.durability.lastUpdate = 0
+	end
+	self:UpdateDisplay()
+end
+
+function InfoBar:PLAYER_XP_UPDATE()
+	-- Update XP display
+	self:UpdateDisplay()
+end
+
+function InfoBar:UPDATE_FACTION()
+	-- Update reputation display
+	self:UpdateDisplay()
+end
+
+function InfoBar:FRIENDLIST_UPDATE()
+	-- Invalidate friends cache
+	if self.cache then
+		self.cache.friends.lastUpdate = 0
+	end
+	self:UpdateDisplay()
+end
+
+function InfoBar:GUILD_ROSTER_UPDATE()
+	-- Invalidate guild cache
+	if self.cache then
+		self.cache.guild.lastUpdate = 0
+	end
+	self:UpdateDisplay()
+end
+
+function InfoBar:UPDATE_INSTANCE_INFO()
+	-- Update instance difficulty
+	self:UpdateDisplay()
+end
+
+function InfoBar:MAIL_INBOX_UPDATE()
+	-- Update mail indicator
+	self:UpdateDisplay()
+end
+
 function InfoBar:UpdateDisplay()
 	if not self.bar or not self.bar:IsShown() then return end
 	
+	-- Use pcall to catch any errors in the display update
+	local success, err = pcall(function()
+		self:UpdateDisplayInternal()
+	end)
+	
+	if not success then
+		-- Log error but don't break the addon
+		print("|cffff0000Weevil InfoBar Error:|r " .. tostring(err))
+	end
+end
+
+function InfoBar:UpdateDisplayInternal()
 	local leftInfo = {}
 	local centerInfo = {}
 	local rightInfo = {}
@@ -297,14 +394,30 @@ function InfoBar:UpdateDisplay()
 	-- Bag Space
 	if self.db.profile.showBags then
 		local free, total = 0, 0
-		-- Use NUM_TOTAL_EQUIPPED_BAG_SLOTS (WoW 11.0) or fallback to 4
-		local numBags = NUM_TOTAL_EQUIPPED_BAG_SLOTS or 4
-		for i = 0, numBags do
-			local numSlots = C_Container.GetContainerNumSlots(i) or 0
-			total = total + numSlots
-			local freeSlots = C_Container.GetContainerNumFreeSlots(i) or 0
-			free = free + freeSlots
+		local now = GetTime()
+		
+		-- Use cache if less than 5 seconds old
+		if self.cache and self.cache.bags.lastUpdate > 0 and (now - self.cache.bags.lastUpdate) < 5 then
+			free = self.cache.bags.free
+			total = self.cache.bags.total
+		else
+			-- Use NUM_TOTAL_EQUIPPED_BAG_SLOTS (WoW 11.0) or fallback to 4
+			local numBags = NUM_TOTAL_EQUIPPED_BAG_SLOTS or 4
+			for i = 0, numBags do
+				local numSlots = C_Container.GetContainerNumSlots(i) or 0
+				total = total + numSlots
+				local freeSlots = C_Container.GetContainerNumFreeSlots(i) or 0
+				free = free + freeSlots
+			end
+			
+			-- Update cache
+			if self.cache then
+				self.cache.bags.free = free
+				self.cache.bags.total = total
+				self.cache.bags.lastUpdate = now
+			end
 		end
+		
 		local percent = total > 0 and (free / total) * 100 or 0
 		local color = percent > 30 and "00ff00" or (percent > 10 and "ffff00" or "ff0000")
 		table.insert(leftInfo, string.format("|cff00ccff[Bags]|r |cff%s%d|r|cff888888/|r%d", color, free, total))
@@ -312,16 +425,33 @@ function InfoBar:UpdateDisplay()
 	
 	-- Durability
 	if self.db.profile.showDurability then
-		local total, current = 0, 0
-		for i = 1, 18 do
-			local curDur, maxDur = GetInventoryItemDurability(i)
-			if curDur and maxDur then
-				current = current + curDur
-				total = total + maxDur
+		local percent = 0
+		local now = GetTime()
+		
+		-- Use cache if less than 5 seconds old
+		if self.cache and self.cache.durability.lastUpdate > 0 and (now - self.cache.durability.lastUpdate) < 5 then
+			percent = self.cache.durability.percent
+		else
+			local total, current = 0, 0
+			for i = 1, 18 do
+				local curDur, maxDur = GetInventoryItemDurability(i)
+				if curDur and maxDur then
+					current = current + curDur
+					total = total + maxDur
+				end
+			end
+			if total > 0 then
+				percent = (current / total) * 100
+				
+				-- Update cache
+				if self.cache then
+					self.cache.durability.percent = percent
+					self.cache.durability.lastUpdate = now
+				end
 			end
 		end
-		if total > 0 then
-			local percent = (current / total) * 100
+		
+		if percent > 0 then
 			local color = percent > 50 and "00ff00" or (percent > 25 and "ffff00" or "ff0000")
 			table.insert(leftInfo, string.format("|cff00ccff[Dur]|r |cff%s%.0f%%|r", color, percent))
 		end
@@ -329,19 +459,36 @@ function InfoBar:UpdateDisplay()
 	
 	-- Item Level
 	if self.db.profile.showItemLevel then
-		local total, count = 0, 0
-		for i = 1, 18 do
-			local itemLink = GetInventoryItemLink("player", i)
-			if itemLink then
-				local itemLevel = GetDetailedItemLevelInfo(itemLink)
-				if itemLevel and itemLevel > 0 then
-					total = total + itemLevel
-					count = count + 1
+		local avgIlvl = 0
+		local now = GetTime()
+		
+		-- Use cache if less than 10 seconds old (item level changes rarely)
+		if self.cache and self.cache.itemLevel.lastUpdate > 0 and (now - self.cache.itemLevel.lastUpdate) < 10 then
+			avgIlvl = self.cache.itemLevel.avgIlvl
+		else
+			local total, count = 0, 0
+			for i = 1, 18 do
+				local itemLink = GetInventoryItemLink("player", i)
+				if itemLink then
+					local itemLevel = GetDetailedItemLevelInfo(itemLink)
+					if itemLevel and itemLevel > 0 then
+						total = total + itemLevel
+						count = count + 1
+					end
+				end
+			end
+			if count > 0 then
+				avgIlvl = total / count
+				
+				-- Update cache
+				if self.cache then
+					self.cache.itemLevel.avgIlvl = avgIlvl
+					self.cache.itemLevel.lastUpdate = now
 				end
 			end
 		end
-		if count > 0 then
-			local avgIlvl = total / count
+		
+		if avgIlvl > 0 then
 			table.insert(leftInfo, string.format("|cff00ccff[iLvl]|r |cffffaa00%.0f|r", avgIlvl))
 		end
 	end
@@ -450,17 +597,32 @@ function InfoBar:UpdateDisplay()
 	
 	-- Friends Online
 	if self.db.profile.showFriends then
-		local _, numOnline = C_FriendList.GetNumFriends()
-		-- Count BNet friends properly
-		local numBNetOnline = 0
-		local _, numBNetTotal = BNGetNumFriends()
-		for i = 1, numBNetTotal do
-			local accountInfo = C_BattleNet.GetFriendAccountInfo(i)
-			if accountInfo and accountInfo.gameAccountInfo and accountInfo.gameAccountInfo.isOnline then
-				numBNetOnline = numBNetOnline + 1
+		local totalOnline = 0
+		local now = GetTime()
+		
+		-- Use cache if less than 5 seconds old
+		if self.cache and self.cache.friends.lastUpdate > 0 and (now - self.cache.friends.lastUpdate) < 5 then
+			totalOnline = self.cache.friends.count
+		else
+			local _, numOnline = C_FriendList.GetNumFriends()
+			-- Count BNet friends properly
+			local numBNetOnline = 0
+			local _, numBNetTotal = BNGetNumFriends()
+			for i = 1, numBNetTotal do
+				local accountInfo = C_BattleNet.GetFriendAccountInfo(i)
+				if accountInfo and accountInfo.gameAccountInfo and accountInfo.gameAccountInfo.isOnline then
+					numBNetOnline = numBNetOnline + 1
+				end
+			end
+			totalOnline = numOnline + numBNetOnline
+			
+			-- Update cache
+			if self.cache then
+				self.cache.friends.count = totalOnline
+				self.cache.friends.lastUpdate = now
 			end
 		end
-		local totalOnline = numOnline + numBNetOnline
+		
 		local color = totalOnline > 0 and "88ff88" or "888888"
 		table.insert(rightInfo, string.format("|cff00ccff[Friends]|r |cff%s%d|r", color, totalOnline))
 	end
@@ -468,7 +630,24 @@ function InfoBar:UpdateDisplay()
 	-- Guild
 	if self.db.profile.showGuild then
 		if IsInGuild() then
-			local numTotal, numOnline = GetNumGuildMembers()
+			local numOnline, numTotal = 0, 0
+			local now = GetTime()
+			
+			-- Use cache if less than 10 seconds old
+			if self.cache and self.cache.guild.lastUpdate > 0 and (now - self.cache.guild.lastUpdate) < 10 then
+				numOnline = self.cache.guild.online
+				numTotal = self.cache.guild.total
+			else
+				numTotal, numOnline = GetNumGuildMembers()
+				
+				-- Update cache
+				if self.cache then
+					self.cache.guild.online = numOnline
+					self.cache.guild.total = numTotal
+					self.cache.guild.lastUpdate = now
+				end
+			end
+			
 			local color = numOnline > 0 and "88ff88" or "888888"
 			table.insert(rightInfo, string.format("|cff00ccff[Guild]|r |cff%s%d|r|cff888888/|r%d", 
 				color, numOnline, numTotal))

@@ -152,7 +152,13 @@ function Weevil:SetupOptions()
 						get = function() return Weevil:GetModule("InfoBar").db.profile.enabled end,
 						set = function(_, value) 
 							Weevil:GetModule("InfoBar").db.profile.enabled = value
-							Weevil:GetModule("InfoBar"):Toggle()
+							if value then
+								Weevil:GetModule("InfoBar"):ShowBar()
+								Weevil:GetModule("InfoBar"):StartUpdates()
+							else
+								Weevil:GetModule("InfoBar"):HideBar()
+								Weevil:GetModule("InfoBar"):StopUpdates()
+							end
 						end,
 					},
 					position = {
@@ -170,11 +176,67 @@ function Weevil:SetupOptions()
 							Weevil:GetModule("InfoBar"):UpdateBarAppearance()
 						end,
 					},
+					barScale = {
+						name = L["Bar Scale"],
+						desc = L["Set the scale of the info bar"],
+						type = "range",
+						order = 3,
+						min = 0.8,
+						max = 1.5,
+						step = 0.05,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.barScale end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.barScale = value
+							Weevil:GetModule("InfoBar"):UpdateBarAppearance()
+						end,
+					},
+					barHeight = {
+						name = L["Bar Height"],
+						desc = L["Set the height of the info bar"],
+						type = "range",
+						order = 4,
+						min = 18,
+						max = 32,
+						step = 1,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.barHeight end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.barHeight = value
+							Weevil:GetModule("InfoBar"):UpdateBarAppearance()
+						end,
+					},
+					fontSize = {
+						name = L["Font Size"],
+						desc = L["Set the font size for the info bar"],
+						type = "range",
+						order = 5,
+						min = 9,
+						max = 16,
+						step = 1,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.fontSize end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.fontSize = value
+							Weevil:GetModule("InfoBar"):UpdateBarAppearance()
+						end,
+					},
+					offsetFromEdge = {
+						name = L["Offset From Edge"],
+						desc = L["Set distance from screen edge"],
+						type = "range",
+						order = 6,
+						min = 0,
+						max = 50,
+						step = 1,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.offsetFromEdge end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.offsetFromEdge = value
+							Weevil:GetModule("InfoBar"):UpdateBarAppearance()
+						end,
+					},
 					bgAlpha = {
 						name = L["Background Alpha"],
 						desc = L["Set the transparency of the info bar background"],
 						type = "range",
-						order = 3,
+						order = 7,
 						min = 0,
 						max = 1,
 						step = 0.05,
@@ -184,13 +246,34 @@ function Weevil:SetupOptions()
 							Weevil:GetModule("InfoBar"):UpdateBarAppearance()
 						end,
 					},
+					useClassColor = {
+						name = L["Use Class Color"],
+						desc = L["Use your class color for the accent"],
+						type = "toggle",
+						order = 8,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.useClassColor end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.useClassColor = value
+							Weevil:GetModule("InfoBar"):UpdateBarAppearance()
+						end,
+					},
+					autoHideInCombat = {
+						name = L["Auto Hide In Combat"],
+						desc = L["Hide the bar when entering combat"],
+						type = "toggle",
+						order = 9,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.autoHideInCombat end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.autoHideInCombat = value
+						end,
+					},
 					spacer1 = {
 						name = "",
 						type = "description",
 						order = 10,
 					},
-					displayHeader = {
-						name = "Display Options",
+					performanceHeader = {
+						name = L["Performance Displays"],
 						type = "header",
 						order = 11,
 					},
@@ -216,22 +299,32 @@ function Weevil:SetupOptions()
 							Weevil:GetModule("InfoBar"):UpdateDisplay()
 						end,
 					},
-					showGold = {
-						name = L["Show Gold"],
-						desc = L["Display current gold"],
+					showMemory = {
+						name = L["Show Memory"],
+						desc = L["Display addon memory usage"],
 						type = "toggle",
 						order = 14,
-						get = function() return Weevil:GetModule("InfoBar").db.profile.showGold end,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.showMemory end,
 						set = function(_, value) 
-							Weevil:GetModule("InfoBar").db.profile.showGold = value
+							Weevil:GetModule("InfoBar").db.profile.showMemory = value
 							Weevil:GetModule("InfoBar"):UpdateDisplay()
 						end,
+					},
+					spacer2 = {
+						name = "",
+						type = "description",
+						order = 20,
+					},
+					characterHeader = {
+						name = L["Character Displays"],
+						type = "header",
+						order = 21,
 					},
 					showBags = {
 						name = L["Show Bag Space"],
 						desc = L["Display free bag slots"],
 						type = "toggle",
-						order = 15,
+						order = 22,
 						get = function() return Weevil:GetModule("InfoBar").db.profile.showBags end,
 						set = function(_, value) 
 							Weevil:GetModule("InfoBar").db.profile.showBags = value
@@ -242,21 +335,86 @@ function Weevil:SetupOptions()
 						name = L["Show Durability"],
 						desc = L["Display average item durability"],
 						type = "toggle",
-						order = 16,
+						order = 23,
 						get = function() return Weevil:GetModule("InfoBar").db.profile.showDurability end,
 						set = function(_, value) 
 							Weevil:GetModule("InfoBar").db.profile.showDurability = value
 							Weevil:GetModule("InfoBar"):UpdateDisplay()
 						end,
 					},
+					showItemLevel = {
+						name = L["Show Item Level"],
+						desc = L["Display average item level"],
+						type = "toggle",
+						order = 24,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.showItemLevel end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.showItemLevel = value
+							Weevil:GetModule("InfoBar"):UpdateDisplay()
+						end,
+					},
+					showTalentSpec = {
+						name = L["Show Talent Spec"],
+						desc = L["Display current specialization"],
+						type = "toggle",
+						order = 25,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.showTalentSpec end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.showTalentSpec = value
+							Weevil:GetModule("InfoBar"):UpdateDisplay()
+						end,
+					},
+					showXP = {
+						name = L["Show XP"],
+						desc = L["Display experience progress"],
+						type = "toggle",
+						order = 26,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.showXP end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.showXP = value
+							Weevil:GetModule("InfoBar"):UpdateDisplay()
+						end,
+					},
+					showReputation = {
+						name = L["Show Reputation"],
+						desc = L["Display watched faction reputation"],
+						type = "toggle",
+						order = 27,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.showReputation end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.showReputation = value
+							Weevil:GetModule("InfoBar"):UpdateDisplay()
+						end,
+					},
+					spacer3 = {
+						name = "",
+						type = "description",
+						order = 30,
+					},
+					locationHeader = {
+						name = L["Location & Time Displays"],
+						type = "header",
+						order = 31,
+					},
 					showLocation = {
 						name = L["Show Location"],
 						desc = L["Display current zone and coordinates"],
 						type = "toggle",
-						order = 17,
+						order = 32,
 						get = function() return Weevil:GetModule("InfoBar").db.profile.showLocation end,
 						set = function(_, value) 
 							Weevil:GetModule("InfoBar").db.profile.showLocation = value
+							Weevil:GetModule("InfoBar"):UpdateDisplay()
+						end,
+					},
+					showCoordinates = {
+						name = L["Show Coordinates"],
+						desc = L["Display player coordinates"],
+						type = "toggle",
+						order = 33,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.showCoordinates end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.showCoordinates = value
 							Weevil:GetModule("InfoBar"):UpdateDisplay()
 						end,
 					},
@@ -264,21 +422,75 @@ function Weevil:SetupOptions()
 						name = L["Show Clock"],
 						desc = L["Display server and local time"],
 						type = "toggle",
-						order = 18,
+						order = 34,
 						get = function() return Weevil:GetModule("InfoBar").db.profile.showClock end,
 						set = function(_, value) 
 							Weevil:GetModule("InfoBar").db.profile.showClock = value
 							Weevil:GetModule("InfoBar"):UpdateDisplay()
 						end,
 					},
-					showMemory = {
-						name = L["Show Memory"],
-						desc = L["Display addon memory usage"],
+					show24HourTime = {
+						name = L["24 Hour Format"],
+						desc = L["Use 24-hour time format"],
 						type = "toggle",
-						order = 19,
-						get = function() return Weevil:GetModule("InfoBar").db.profile.showMemory end,
+						order = 35,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.show24HourTime end,
 						set = function(_, value) 
-							Weevil:GetModule("InfoBar").db.profile.showMemory = value
+							Weevil:GetModule("InfoBar").db.profile.show24HourTime = value
+							Weevil:GetModule("InfoBar"):UpdateDisplay()
+						end,
+					},
+					spacer4 = {
+						name = "",
+						type = "description",
+						order = 40,
+					},
+					socialHeader = {
+						name = L["Social & Currency Displays"],
+						type = "header",
+						order = 41,
+					},
+					showGold = {
+						name = L["Show Gold"],
+						desc = L["Display current gold"],
+						type = "toggle",
+						order = 42,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.showGold end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.showGold = value
+							Weevil:GetModule("InfoBar"):UpdateDisplay()
+						end,
+					},
+					showFriends = {
+						name = L["Show Friends"],
+						desc = L["Display online friends count"],
+						type = "toggle",
+						order = 43,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.showFriends end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.showFriends = value
+							Weevil:GetModule("InfoBar"):UpdateDisplay()
+						end,
+					},
+					showGuild = {
+						name = L["Show Guild"],
+						desc = L["Display online guild members"],
+						type = "toggle",
+						order = 44,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.showGuild end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.showGuild = value
+							Weevil:GetModule("InfoBar"):UpdateDisplay()
+						end,
+					},
+					showQuestLog = {
+						name = L["Show Quest Log"],
+						desc = L["Display quest count"],
+						type = "toggle",
+						order = 45,
+						get = function() return Weevil:GetModule("InfoBar").db.profile.showQuestLog end,
+						set = function(_, value) 
+							Weevil:GetModule("InfoBar").db.profile.showQuestLog = value
 							Weevil:GetModule("InfoBar"):UpdateDisplay()
 						end,
 					},
@@ -445,15 +657,8 @@ function Weevil:SetupOptions()
 		},
 	}
 	
-	-- Register options with AceConfig
-	local AceConfig = LibStub("AceConfig-3.0")
-	local AceConfigDialog = LibStub("AceConfigDialog-3.0")
-	local AceDBOptions = LibStub("AceDBOptions-3.0")
-	
-	AceConfig:RegisterOptionsTable("Weevil", options)
-	AceConfigDialog:AddToBlizOptions("Weevil", "Weevil")
-	
-	-- Add profiles
-	options.args.profiles = AceDBOptions:GetOptionsTable(self.db)
-	AceConfigDialog:AddToBlizOptions("Weevil-Profiles", L["Profiles"], "Weevil")
+	-- Store options table for potential future use
+	-- Note: Options are accessed through custom UI only (/weevil command)
+	-- Not registered with Blizzard's interface options
+	self.optionsTable = options
 end

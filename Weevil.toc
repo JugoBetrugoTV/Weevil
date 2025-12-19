@@ -37,10 +37,10 @@ Locales\deDE.lua
 Weevil.lua
 
 # Config
+Config\CustomUI.lua
 Config\Options.lua
 
 # Modules
 Modules\Automation.lua
 Modules\InfoBar.lua
-Modules\Chat.lua
 Modules\UI.lua

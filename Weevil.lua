@@ -51,9 +51,8 @@ function Weevil:SlashCommand(input)
 	input = input:trim():lower()
 	
 	if input == "" or input == "options" or input == "config" then
-		-- Open config
-		local AceConfigDialog = LibStub("AceConfigDialog-3.0")
-		AceConfigDialog:Open("Weevil")
+		-- Open custom UI
+		self.CustomUI:Show()
 	elseif input == "infobar" or input == "bar" then
 		-- Toggle InfoBar
 		local infobar = self:GetModule("InfoBar")
@@ -86,8 +85,7 @@ function Weevil:SetupLDB()
 		icon = "Interface\\Icons\\INV_Misc_Dice_01",
 		OnClick = function(clickedframe, button)
 			if button == "LeftButton" then
-				local AceConfigDialog = LibStub("AceConfigDialog-3.0")
-				AceConfigDialog:Open("Weevil")
+				Weevil.CustomUI:Show()
 			elseif button == "RightButton" then
 				local infobar = Weevil:GetModule("InfoBar")
 				if infobar then

@@ -16,12 +16,17 @@ UI.defaults = {
 }
 
 function UI:OnInitialize()
-	self.db = Weevil.db:RegisterNamespace("UI", {
-		profile = self.defaults
-	})
+	-- Database will be setup by parent addon first
 end
 
 function UI:OnEnable()
+	-- Now setup the database namespace
+	if not self.db then
+		self.db = Weevil.db:RegisterNamespace("UI", {
+			profile = self.defaults
+		})
+	end
+	
 	if self.db.profile.hideErrorFrame then
 		self:HideErrorFrame()
 	end

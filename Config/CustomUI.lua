@@ -259,7 +259,7 @@ function CustomUI:CreateInfoBarPanel(parent)
 	panel:SetAllPoints()
 	
 	local content = CreateFrame("Frame", nil, panel)
-	content:SetSize(600, 1400)
+	content:SetSize(600, 1600)
 	panel:SetScrollChild(content)
 	
 	local title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -273,7 +273,19 @@ function CustomUI:CreateInfoBarPanel(parent)
 	-- General Settings
 	yOffset = self:CreateSection(content, yOffset, "General Settings", {
 		{key = "enabled", label = "Enable Info Bar", desc = "Show the information bar"},
+		{key = "autoHideInCombat", label = "Auto Hide In Combat", desc = "Hide the bar when entering combat"},
+		{key = "useClassColor", label = "Use Class Color", desc = "Use your class color for the accent"},
 	}, infobar.db.profile)
+	
+	-- Appearance Settings Note
+	local appearanceNote = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	appearanceNote:SetPoint("TOPLEFT", 10, yOffset)
+	appearanceNote:SetPoint("RIGHT", -30, 0)
+	appearanceNote:SetText("|cffffaa00Appearance Settings:|r Use /weevil to adjust bar scale (0.8-1.5), height (18-32px), font size (9-16px), position (TOP/BOTTOM), and offset from edge (0-50px).")
+	appearanceNote:SetJustifyH("LEFT")
+	appearanceNote:SetTextColor(1, 0.85, 0, 1)
+	appearanceNote:SetSpacing(2)
+	yOffset = yOffset - 60
 	
 	-- Performance Displays
 	yOffset = self:CreateSection(content, yOffset, "Performance Displays", {
@@ -334,20 +346,30 @@ function CustomUI:CreateInfoBarPanel(parent)
 end
 
 function CustomUI:CreateUIPanel(parent)
-	local panel = CreateFrame("Frame", nil, parent)
+	local panel = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
 	panel:SetAllPoints()
 	
-	local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	local content = CreateFrame("Frame", nil, panel)
+	content:SetSize(600, 800)
+	panel:SetScrollChild(content)
+	
+	local title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
 	title:SetPoint("TOPLEFT", 10, -10)
 	title:SetText("|cffffaa66UI Tweaks & Enhancements|r")
 	title:SetFont("Fonts\\FRIZQT__.TTF", 18, "OUTLINE")
 	
-	local desc = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
-	desc:SetPoint("RIGHT", -20, 0)
-	desc:SetText("Customize your World of Warcraft interface with these quality of life improvements.")
-	desc:SetJustifyH("LEFT")
-	desc:SetTextColor(0.7, 0.7, 0.7, 1)
+	local yOffset = -50
+	local ui = Weevil:GetModule("UI")
+	
+	-- UI Tweaks Section
+	yOffset = self:CreateSection(content, yOffset, "UI Enhancements", {
+		{key = "hideErrorFrame", label = "Hide Error Frame", desc = "Hide the red error text"},
+		{key = "fasterAutoLoot", label = "Faster Auto Loot", desc = "Instant auto looting"},
+		{key = "screenshotAchievements", label = "Screenshot Achievements", desc = "Automatically screenshot when earning achievements"},
+		{key = "enhancedTooltips", label = "Enhanced Tooltips", desc = "Show item level and spell IDs in tooltips"},
+		{key = "confirmLootRoll", label = "Confirm Loot Roll", desc = "Require confirmation for passing on loot"},
+		{key = "hideTalkingHead", label = "Hide Talking Head", desc = "Hide the talking head frame"},
+	}, ui.db.profile)
 	
 	panel:Hide()
 	return panel
@@ -368,6 +390,35 @@ function CustomUI:CreateProfilesPanel(parent)
 	desc:SetText("Manage your addon profiles. Create, delete, and switch between different configurations for your characters.")
 	desc:SetJustifyH("LEFT")
 	desc:SetTextColor(0.7, 0.7, 0.7, 1)
+	
+	-- Current Profile Display
+	local currentProfileLabel = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	currentProfileLabel:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -30)
+	currentProfileLabel:SetText("|cff88aaffCurrent Profile:|r")
+	currentProfileLabel:SetFont("Fonts\\FRIZQT__.TTF", 13)
+	
+	local currentProfileName = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	currentProfileName:SetPoint("LEFT", currentProfileLabel, "RIGHT", 10, 0)
+	currentProfileName:SetText("|cff00ff00" .. (Weevil.db:GetCurrentProfile() or "Default") .. "|r")
+	currentProfileName:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
+	
+	-- Profile Actions Note
+	local noteText = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	noteText:SetPoint("TOPLEFT", currentProfileLabel, "BOTTOMLEFT", 0, -30)
+	noteText:SetPoint("RIGHT", -20, 0)
+	noteText:SetText("Profile management features allow you to save different configurations for different characters or situations. Each profile stores all your addon settings independently.")
+	noteText:SetJustifyH("LEFT")
+	noteText:SetTextColor(0.7, 0.7, 0.7, 1)
+	noteText:SetSpacing(3)
+	
+	-- Note about advanced features
+	local advancedNote = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	advancedNote:SetPoint("TOPLEFT", noteText, "BOTTOMLEFT", 0, -30)
+	advancedNote:SetPoint("RIGHT", -20, 0)
+	advancedNote:SetText("|cffff8800Note:|r Advanced profile operations (create, copy, delete, reset) can be accessed through the /weevil command or by using the AceDB profile API.")
+	advancedNote:SetJustifyH("LEFT")
+	advancedNote:SetTextColor(1, 0.8, 0, 1)
+	advancedNote:SetSpacing(3)
 	
 	panel:Hide()
 	return panel

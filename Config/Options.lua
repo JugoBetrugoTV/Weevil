@@ -657,15 +657,8 @@ function Weevil:SetupOptions()
 		},
 	}
 	
-	-- Register options with AceConfig
-	local AceConfig = LibStub("AceConfig-3.0")
-	local AceConfigDialog = LibStub("AceConfigDialog-3.0")
-	local AceDBOptions = LibStub("AceDBOptions-3.0")
-	
-	AceConfig:RegisterOptionsTable("Weevil", options)
-	AceConfigDialog:AddToBlizOptions("Weevil", "Weevil")
-	
-	-- Add profiles
-	options.args.profiles = AceDBOptions:GetOptionsTable(self.db)
-	AceConfigDialog:AddToBlizOptions("Weevil-Profiles", L["Profiles"], "Weevil")
+	-- Store options table for potential future use
+	-- Note: Options are accessed through custom UI only (/weevil command)
+	-- Not registered with Blizzard's interface options
+	self.optionsTable = options
 end

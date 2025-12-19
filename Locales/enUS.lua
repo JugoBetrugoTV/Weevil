@@ -1,0 +1,99 @@
+-- Weevil English Localization (enUS)
+
+local L = LibStub("AceLocale-3.0"):NewLocale("Weevil", "enUS", true)
+
+if not L then return end
+
+-- General
+L["Weevil"] = "Weevil"
+L["Quality of Life addon combining automation and info display features"] = "Quality of Life addon combining automation and info display features"
+
+-- Commands
+L["Show/Hide Options"] = "Show/Hide Options"
+L["Toggle InfoBar"] = "Toggle InfoBar"
+
+-- Automation Module
+L["Automation"] = "Automation"
+L["Automation Settings"] = "Automation Settings"
+L["Auto Accept Quests"] = "Auto Accept Quests"
+L["Automatically accept quests from NPCs"] = "Automatically accept quests from NPCs"
+L["Auto Turn-in Quests"] = "Auto Turn-in Quests"
+L["Automatically complete quests"] = "Automatically complete quests"
+L["Auto Repair"] = "Auto Repair"
+L["Automatically repair gear at vendors"] = "Automatically repair gear at vendors"
+L["Use Guild Repair"] = "Use Guild Repair"
+L["Use guild bank funds for repairs when available"] = "Use guild bank funds for repairs when available"
+L["Auto Sell Junk"] = "Auto Sell Junk"
+L["Automatically sell gray items to vendors"] = "Automatically sell gray items to vendors"
+L["Auto Accept Resurrect"] = "Auto Accept Resurrect"
+L["Accept resurrection requests automatically"] = "Accept resurrection requests automatically"
+L["Auto Skip Cutscenes"] = "Auto Skip Cutscenes"
+L["Skip cinematics and cutscenes automatically"] = "Skip cinematics and cutscenes automatically"
+L["Auto Accept Summon"] = "Auto Accept Summon"
+L["Accept warlock summons automatically"] = "Accept warlock summons automatically"
+L["Auto Release in BGs"] = "Auto Release in BGs"
+L["Auto release spirit in battlegrounds"] = "Auto release spirit in battlegrounds"
+
+-- InfoBar Module
+L["Info Bar"] = "Info Bar"
+L["Info Bar Settings"] = "Info Bar Settings"
+L["Enable Info Bar"] = "Enable Info Bar"
+L["Show the information bar"] = "Show the information bar"
+L["Position"] = "Position"
+L["Choose where to display the info bar"] = "Choose where to display the info bar"
+L["Top"] = "Top"
+L["Bottom"] = "Bottom"
+L["Background Color"] = "Background Color"
+L["Set the background color for the info bar"] = "Set the background color for the info bar"
+L["Background Alpha"] = "Background Alpha"
+L["Set the transparency of the info bar background"] = "Set the transparency of the info bar background"
+L["Show FPS"] = "Show FPS"
+L["Display frames per second"] = "Display frames per second"
+L["Show Latency"] = "Show Latency"
+L["Display home and world latency"] = "Display home and world latency"
+L["Show Gold"] = "Show Gold"
+L["Display current gold"] = "Display current gold"
+L["Show Bag Space"] = "Show Bag Space"
+L["Display free bag slots"] = "Display free bag slots"
+L["Show Durability"] = "Show Durability"
+L["Display average item durability"] = "Display average item durability"
+L["Show Location"] = "Show Location"
+L["Display current zone and coordinates"] = "Display current zone and coordinates"
+L["Show Clock"] = "Show Clock"
+L["Display server and local time"] = "Display server and local time"
+L["Show Memory"] = "Show Memory"
+L["Display addon memory usage"] = "Display addon memory usage"
+
+-- Chat Module
+L["Chat"] = "Chat"
+L["Chat Settings"] = "Chat Settings"
+L["Enable Chat Copy"] = "Enable Chat Copy"
+L["Allow copying of chat text"] = "Allow copying of chat text"
+L["Chat Timestamps"] = "Chat Timestamps"
+L["Show timestamps in chat"] = "Show timestamps in chat"
+L["URL Detection"] = "URL Detection"
+L["Detect and copy URLs from chat"] = "Detect and copy URLs from chat"
+L["Class Colored Names"] = "Class Colored Names"
+L["Color player names by class in chat"] = "Color player names by class in chat"
+L["Sticky Channels"] = "Sticky Channels"
+L["Remember the last chat channel used"] = "Remember the last chat channel used"
+
+-- UI Module
+L["UI"] = "UI"
+L["UI Settings"] = "UI Settings"
+L["Hide Error Frame"] = "Hide Error Frame"
+L["Hide the red error text"] = "Hide the red error text"
+L["Faster Auto Loot"] = "Faster Auto Loot"
+L["Instant auto looting"] = "Instant auto looting"
+L["Screenshot Achievements"] = "Screenshot Achievements"
+L["Automatically screenshot when earning achievements"] = "Automatically screenshot when earning achievements"
+L["Enhanced Tooltips"] = "Enhanced Tooltips"
+L["Show item level and spell IDs in tooltips"] = "Show item level and spell IDs in tooltips"
+L["Confirm Loot Roll"] = "Confirm Loot Roll"
+L["Require confirmation for passing on loot"] = "Require confirmation for passing on loot"
+L["Hide Talking Head"] = "Hide Talking Head"
+L["Hide the talking head frame"] = "Hide the talking head frame"
+
+-- Profiles
+L["Profiles"] = "Profiles"
+L["Manage addon profiles"] = "Manage addon profiles"

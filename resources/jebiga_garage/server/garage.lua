@@ -27,17 +27,12 @@ local vehicleShop = {
 }
 
 function getPlayerVehicles(player)
-    local accountId = exports.jebiga_core:getPlayerAccountId(player)
+    local accountId = getElementData(player, "jebiga:accountId")
     if not accountId then return {} end
 
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
+    local result = exports.jebiga_core:db_fetchAll([[
         SELECT * FROM player_vehicles WHERE account_id = ?
     ]], accountId)
-
-    if not queryHandle then return {} end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
 
     return result or {}
 end
@@ -67,15 +62,15 @@ function purchaseVehicle(player, vehicleId)
         return false, "Insufficient funds"
     end
 
-    local accountId = exports.jebiga_core:getPlayerAccountId(player)
+    local accountId = getElementData(player, "jebiga:accountId")
     if not accountId then return false, "Not logged in" end
 
     -- Deduct money
     exports.jebiga_core:removePlayerMoney(player, vehicleInfo.price, "Vehicle purchase: " .. vehicleInfo.name)
 
     -- Add vehicle
-    dbExec(exports.jebiga_core:dbExec, [[
-        INSERT INTO player_vehicles (account_id, vehicle_id) VALUES (?, ?)
+    exports.jebiga_core:db_execute([[
+        INSERT INTO player_vehicles (account_id, vehicle_model) VALUES (?, ?)
     ]], accountId, vehicleId)
 
     triggerClientEvent(player, Events.Notification.SHOW_SUCCESS, player, "Purchased " .. vehicleInfo.name .. "!", 3000)

@@ -9,7 +9,7 @@ function getScoreboardData()
 
     for _, player in ipairs(getElementsByType("player")) do
         local playerData = exports.jebiga_core:getPlayerData(player)
-        local cachedData = exports.jebiga_core:getCachedPlayerData and exports.jebiga_core:getCachedPlayerData(player)
+        local cachedData = exports.jebiga_core:getCachedPlayerData(player)
 
         if playerData then
             local entry = {

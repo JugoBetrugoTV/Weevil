@@ -5,7 +5,7 @@
 
 -- Get comprehensive player profile data
 function getPlayerProfileData(player)
-    local cachedData = exports.jebiga_core:getCachedPlayerData and exports.jebiga_core:getCachedPlayerData(player)
+    local cachedData = exports.jebiga_core:getCachedPlayerData(player)
     if not cachedData then return nil end
 
     local profile = {
@@ -44,7 +44,7 @@ function getPlayerProfileData(player)
     -- Get recent achievements
     local accountId = cachedData.accountId
     if accountId then
-        local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
+        local result = exports.jebiga_core:db_fetchAll([[
             SELECT pa.*, a.name, a.description, a.points, a.category
             FROM player_achievements pa
             JOIN achievements a ON pa.achievement_id = a.achievement_id
@@ -53,21 +53,16 @@ function getPlayerProfileData(player)
             LIMIT 10
         ]], accountId)
 
-        if queryHandle then
-            local result = dbPoll(queryHandle, -1)
-            dbFree(queryHandle)
-
-            if result then
-                for _, row in ipairs(result) do
-                    table.insert(profile.achievements, {
-                        id = row.achievement_id,
-                        name = row.name,
-                        description = row.description,
-                        points = row.points,
-                        category = row.category,
-                        unlockedAt = row.unlocked_at
-                    })
-                end
+        if result then
+            for _, row in ipairs(result) do
+                table.insert(profile.achievements, {
+                    id = row.achievement_id,
+                    name = row.name,
+                    description = row.description,
+                    points = row.points,
+                    category = row.category,
+                    unlockedAt = row.unlocked_at
+                })
             end
         end
     end

@@ -172,38 +172,36 @@ function awardRoundPrizes(gamemode, rankings)
 
     for i, entry in ipairs(rankings) do
         local player = entry.player
-        if not isElement(player) then goto continue end
-
-        if i == 1 then
-            -- Winner
-            addPlayerWin(player, gamemode)
-        else
-            -- Participation
-            if cfg.pointsPerFinish then
-                addPlayerPoints(player, cfg.pointsPerFinish, gamemode)
+        if isElement(player) then
+            if i == 1 then
+                -- Winner
+                addPlayerWin(player, gamemode)
+            else
+                -- Participation
+                if cfg.pointsPerFinish then
+                    addPlayerPoints(player, cfg.pointsPerFinish, gamemode)
+                end
+                if cfg.moneyPerFinish then
+                    addPlayerMoney(player, cfg.moneyPerFinish, gamemode .. " finish")
+                end
             end
-            if cfg.moneyPerFinish then
-                addPlayerMoney(player, cfg.moneyPerFinish, gamemode .. " finish")
-            end
-        end
 
-        -- Update stats
-        updatePlayerStats(player, gamemode, "racesFinished", 1)
-        local currentStats = getPlayerStats(player, gamemode)
-        local currentBest = (currentStats and currentStats.bestPosition) or 999
-        if i < currentBest then
-            -- Update best position in cache and database
-            if currentStats then
-                currentStats.bestPosition = i
-                local accountId = getElementData(player, "jebiga:accountId")
-                if accountId then
-                    execute([[UPDATE player_stats SET best_position = ? WHERE account_id = ? AND gamemode = ?]],
-                        i, accountId, gamemode)
+            -- Update stats
+            updatePlayerStats(player, gamemode, "racesFinished", 1)
+            local currentStats = getPlayerStats(player, gamemode)
+            local currentBest = (currentStats and currentStats.bestPosition) or 999
+            if i < currentBest then
+                -- Update best position in cache and database
+                if currentStats then
+                    currentStats.bestPosition = i
+                    local accountId = getElementData(player, "jebiga:accountId")
+                    if accountId then
+                        execute([[UPDATE player_stats SET best_position = ? WHERE account_id = ? AND gamemode = ?]],
+                            i, accountId, gamemode)
+                    end
                 end
             end
         end
-
-        ::continue::
     end
 end
 

@@ -5,28 +5,29 @@
 
 local toptimesCache = {}
 
+-- Helper to get account ID
+local function getAccountId(player)
+    return getElementData(player, "jebiga:accountId")
+end
+
 -- Get top times for a map
 function getTopTimes(mapName, gamemode, limit)
-    limit = limit or Config.TopTimes.showTop
+    limit = limit or (Config and Config.TopTimes and Config.TopTimes.showTop) or 10
 
     local cacheKey = mapName .. "_" .. gamemode
     if toptimesCache[cacheKey] and toptimesCache[cacheKey].expires > getTickCount() then
         return toptimesCache[cacheKey].data
     end
 
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
+    local result = exports.jebiga_core:db_fetchAll([[
         SELECT t.*, a.username
         FROM toptimes t
         JOIN accounts a ON t.account_id = a.id
-        WHERE t.map_name = ? AND t.gamemode = ?
+        JOIN maps m ON t.map_id = m.id
+        WHERE m.resource_name = ?
         ORDER BY t.time_ms ASC
         LIMIT ?
-    ]], mapName, gamemode, limit)
-
-    if not queryHandle then return {} end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
+    ]], mapName, limit)
 
     local times = {}
     if result then
@@ -50,12 +51,31 @@ function getTopTimes(mapName, gamemode, limit)
     return times
 end
 
+-- Get map ID from name
+local function getMapId(mapName)
+    local result = exports.jebiga_core:db_fetchOne([[
+        SELECT id FROM maps WHERE resource_name = ?
+    ]], mapName)
+    return result and result.id or nil
+end
+
 -- Add or update top time
 function addTopTime(player, mapName, gamemode, timeMs, vehicleId)
     if not isElement(player) then return false, "Invalid player" end
 
-    local accountId = exports.jebiga_core:getPlayerAccountId(player)
+    local accountId = getAccountId(player)
     if not accountId then return false, "Not logged in" end
+
+    local mapId = getMapId(mapName)
+    if not mapId then
+        -- Create map entry if not exists
+        exports.jebiga_core:db_execute([[
+            INSERT IGNORE INTO maps (resource_name, display_name, gamemode) VALUES (?, ?, ?)
+        ]], mapName, mapName, gamemode)
+        mapId = getMapId(mapName)
+    end
+
+    if not mapId then return false, "Map not found" end
 
     -- Check existing top time
     local existingTime = getPlayerTopTime(player, mapName, gamemode)
@@ -65,15 +85,14 @@ function addTopTime(player, mapName, gamemode, timeMs, vehicleId)
     end
 
     -- Insert or update
-    local success = dbExec(exports.jebiga_core:dbExec, [[
-        INSERT INTO toptimes (account_id, map_name, gamemode, time_ms, vehicle_id, recorded_at)
-        VALUES (?, ?, ?, ?, ?, NOW())
+    local success = exports.jebiga_core:db_execute([[
+        INSERT INTO toptimes (account_id, map_id, time_ms, vehicle_id, recorded_at)
+        VALUES (?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE
-            time_ms = IF(? < time_ms, ?, time_ms),
-            vehicle_id = IF(? < time_ms, ?, vehicle_id),
-            recorded_at = IF(? < time_ms, NOW(), recorded_at)
-    ]], accountId, mapName, gamemode, timeMs, vehicleId,
-        timeMs, timeMs, timeMs, vehicleId, timeMs)
+            time_ms = IF(VALUES(time_ms) < time_ms, VALUES(time_ms), time_ms),
+            vehicle_id = IF(VALUES(time_ms) < time_ms, VALUES(vehicle_id), vehicle_id),
+            recorded_at = IF(VALUES(time_ms) < time_ms, NOW(), recorded_at)
+    ]], accountId, mapId, timeMs, vehicleId)
 
     if success then
         -- Invalidate cache
@@ -96,22 +115,23 @@ function addTopTime(player, mapName, gamemode, timeMs, vehicleId)
             -- Broadcast new top time
             if position <= 3 then
                 local posNames = { "1st", "2nd", "3rd" }
-                exports.jebiga_core:broadcastToGamemode(gamemode,
-                    "#FFFF00[TopTime] #00FF00" .. playerName .. " #FFFFFFset " .. posNames[position] .. " place on " .. mapName .. " with " .. Utils.formatTime(timeMs) .. "!"
-                )
+                local timeStr = formatTime(timeMs)
+                outputChatBox("#FFFF00[TopTime] #00FF00" .. playerName .. " #FFFFFFset " .. posNames[position] .. " place on " .. mapName .. " with " .. timeStr .. "!", root, 255, 255, 255, true)
             end
 
             -- Trigger event for achievements
             triggerEvent("weevil:newTopTime", player, mapName, gamemode, position, timeMs)
 
             -- Notify player
-            triggerClientEvent(player, Events.TopTimes.NEW_TOPTIME, player, {
-                map = mapName,
-                gamemode = gamemode,
-                position = position,
-                time = timeMs,
-                isNew = existingTime == nil
-            })
+            if Events and Events.TopTimes and Events.TopTimes.NEW_TOPTIME then
+                triggerClientEvent(player, Events.TopTimes.NEW_TOPTIME, player, {
+                    map = mapName,
+                    gamemode = gamemode,
+                    position = position,
+                    time = timeMs,
+                    isNew = existingTime == nil
+                })
+            end
         end
 
         return true, position
@@ -120,27 +140,31 @@ function addTopTime(player, mapName, gamemode, timeMs, vehicleId)
     return false, "Database error"
 end
 
+-- Format time helper
+function formatTime(ms)
+    local mins = math.floor(ms / 60000)
+    local secs = math.floor((ms % 60000) / 1000)
+    local millis = ms % 1000
+    return string.format("%02d:%02d.%03d", mins, secs, millis)
+end
+
 -- Get player's top time on a map
 function getPlayerTopTime(player, mapName, gamemode)
-    local accountId = exports.jebiga_core:getPlayerAccountId(player)
+    local accountId = getAccountId(player)
     if not accountId then return nil end
 
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
-        SELECT time_ms, vehicle_id, recorded_at
-        FROM toptimes
-        WHERE account_id = ? AND map_name = ? AND gamemode = ?
-    ]], accountId, mapName, gamemode)
+    local result = exports.jebiga_core:db_fetchOne([[
+        SELECT t.time_ms, t.vehicle_id, t.recorded_at
+        FROM toptimes t
+        JOIN maps m ON t.map_id = m.id
+        WHERE t.account_id = ? AND m.resource_name = ?
+    ]], accountId, mapName)
 
-    if not queryHandle then return nil end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
-
-    if result and #result > 0 then
+    if result then
         return {
-            time = result[1].time_ms,
-            vehicleId = result[1].vehicle_id,
-            date = result[1].recorded_at
+            time = result.time_ms,
+            vehicleId = result.vehicle_id,
+            date = result.recorded_at
         }
     end
 
@@ -149,26 +173,23 @@ end
 
 -- Get player's ranking on a map
 function getPlayerRanking(player, mapName, gamemode)
-    local accountId = exports.jebiga_core:getPlayerAccountId(player)
+    local accountId = getAccountId(player)
     if not accountId then return nil end
 
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
+    local result = exports.jebiga_core:db_fetchOne([[
         SELECT COUNT(*) + 1 as ranking
         FROM toptimes t1
-        WHERE t1.map_name = ? AND t1.gamemode = ?
+        JOIN maps m ON t1.map_id = m.id
+        WHERE m.resource_name = ?
         AND t1.time_ms < (
-            SELECT time_ms FROM toptimes t2
-            WHERE t2.account_id = ? AND t2.map_name = ? AND t2.gamemode = ?
+            SELECT t2.time_ms FROM toptimes t2
+            JOIN maps m2 ON t2.map_id = m2.id
+            WHERE t2.account_id = ? AND m2.resource_name = ?
         )
-    ]], mapName, gamemode, accountId, mapName, gamemode)
+    ]], mapName, accountId, mapName)
 
-    if not queryHandle then return nil end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
-
-    if result and #result > 0 then
-        return result[1].ranking
+    if result then
+        return result.ranking
     end
 
     return nil
@@ -176,33 +197,28 @@ end
 
 -- Get total top times for a player
 function getPlayerTopTimesCount(player)
-    local accountId = exports.jebiga_core:getPlayerAccountId(player)
+    local accountId = getAccountId(player)
     if not accountId then return 0 end
 
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
+    local result = exports.jebiga_core:db_fetchOne([[
         SELECT COUNT(*) as count FROM toptimes WHERE account_id = ?
     ]], accountId)
 
-    if not queryHandle then return 0 end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
-
-    if result and #result > 0 then
-        return result[1].count
+    if result then
+        return result.count
     end
 
     return 0
 end
 
 -- Request handler
-addEvent(Events.TopTimes.REQUEST_TOPTIMES, true)
-addEventHandler(Events.TopTimes.REQUEST_TOPTIMES, root, function(mapName, gamemode)
+addEvent("jebiga:toptimes:request", true)
+addEventHandler("jebiga:toptimes:request", root, function(mapName, gamemode)
     local times = getTopTimes(mapName, gamemode)
     local playerTime = getPlayerTopTime(client, mapName, gamemode)
     local playerRank = getPlayerRanking(client, mapName, gamemode)
 
-    triggerClientEvent(client, Events.TopTimes.UPDATE_LIST, client, {
+    triggerClientEvent(client, "jebiga:toptimes:update", client, {
         map = mapName,
         gamemode = gamemode,
         times = times,
@@ -215,15 +231,22 @@ end)
 addEvent("weevil:newTopTime", false)
 addEventHandler("weevil:newTopTime", root, function(mapName, gamemode, position, timeMs)
     local player = source
-
-    -- Check top time achievements
     local totalToptimes = getPlayerTopTimesCount(player)
 
-    if totalToptimes >= 1 then
-        exports.jebiga_achievements:unlockAchievement(player, "toptime_1")
-    end
-    if totalToptimes >= 10 then
-        exports.jebiga_achievements:unlockAchievement(player, "toptime_10")
+    -- Try to unlock achievements
+    local achievementsRes = getResourceFromName("jebiga_achievements")
+    if achievementsRes and getResourceState(achievementsRes) == "running" then
+        pcall(function()
+            if totalToptimes >= 1 then
+                exports.jebiga_achievements:unlockAchievement(player, "toptime_1")
+            end
+            if totalToptimes >= 10 then
+                exports.jebiga_achievements:unlockAchievement(player, "toptime_10")
+            end
+            if totalToptimes >= 50 then
+                exports.jebiga_achievements:unlockAchievement(player, "toptime_50")
+            end
+        end)
     end
 end)
 
@@ -245,13 +268,14 @@ addCommandHandler("toptimes", function(player, cmd, mapName)
     outputChatBox("#FFFF00=== Top Times: " .. mapName .. " ===", player, 255, 255, 255, true)
 
     for i, tt in ipairs(times) do
-        local timeStr = Utils.formatTime(tt.time)
+        local timeStr = formatTime(tt.time)
         outputChatBox("#FFFFFF" .. i .. ". " .. tt.username .. " - " .. timeStr, player, 255, 255, 255, true)
     end
 end)
 
 -- Export functions
-exports.jebiga_toptimes = exports.jebiga_toptimes or {}
-exports.jebiga_toptimes.getTopTimes = getTopTimes
-exports.jebiga_toptimes.addTopTime = addTopTime
-exports.jebiga_toptimes.getPlayerTopTime = getPlayerTopTime
+_G.getTopTimes = getTopTimes
+_G.addTopTime = addTopTime
+_G.getPlayerTopTime = getPlayerTopTime
+_G.getPlayerRanking = getPlayerRanking
+_G.getPlayerTopTimesCount = getPlayerTopTimesCount

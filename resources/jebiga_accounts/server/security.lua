@@ -13,20 +13,15 @@ addEventHandler("onResourceStart", resourceRoot, function()
 end)
 
 function loadBanList()
-    -- Load banned serials
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
+    -- Load banned serials using centralized database
+    local result = exports.jebiga_core:db_fetchAll([[
         SELECT serial FROM accounts WHERE banned = 1 AND serial IS NOT NULL
     ]])
 
-    if queryHandle then
-        local result = dbPoll(queryHandle, -1)
-        dbFree(queryHandle)
-
-        if result then
-            for _, row in ipairs(result) do
-                if row.serial and row.serial ~= "" then
-                    bannedSerials[row.serial] = true
-                end
+    if result then
+        for _, row in ipairs(result) do
+            if row.serial and row.serial ~= "" then
+                bannedSerials[row.serial] = true
             end
         end
     end
@@ -185,7 +180,7 @@ function recordViolation(player, type, value)
             local serial = getPlayerSerial(player)
             bannedSerials[serial] = true
 
-            dbExec(exports.jebiga_core:dbExec, [[
+            exports.jebiga_core:db_execute([[
                 INSERT INTO accounts (username, password, serial, banned, ban_reason)
                 VALUES (?, '', ?, 1, 'Anti-cheat auto-ban')
                 ON DUPLICATE KEY UPDATE banned = 1, ban_reason = 'Anti-cheat auto-ban'

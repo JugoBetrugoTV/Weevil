@@ -30,30 +30,21 @@ function getAdminPanelData(admin)
     end
 
     -- Get account count
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, "SELECT COUNT(*) as count FROM accounts")
-    if queryHandle then
-        local result = dbPoll(queryHandle, -1)
-        dbFree(queryHandle)
-        if result and #result > 0 then
-            data.serverStats.registeredAccounts = result[1].count
-        end
+    local countResult = exports.jebiga_core:db_fetchOne("SELECT COUNT(*) as count FROM accounts")
+    if countResult then
+        data.serverStats.registeredAccounts = countResult.count
     end
 
     -- Get recent admin logs
-    local logQuery = dbQuery(exports.jebiga_core:dbQuery, [[
+    local logs = exports.jebiga_core:db_fetchAll([[
         SELECT al.*, a.username as admin_name
         FROM admin_log al
         LEFT JOIN accounts a ON al.admin_id = a.id
         ORDER BY al.created_at DESC
         LIMIT 20
     ]])
-
-    if logQuery then
-        local result = dbPoll(logQuery, -1)
-        dbFree(logQuery)
-        if result then
-            data.recentLogs = result
-        end
+    if logs then
+        data.recentLogs = logs
     end
 
     return data

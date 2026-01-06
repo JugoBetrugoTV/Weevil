@@ -38,8 +38,20 @@
     <export function="teleportToLobby" type="server"/>
     <export function="teleportToArena" type="server"/>
     <export function="getOnlinePlayers" type="server"/>
-    <export function="dbQuery" type="server"/>
-    <export function="dbExec" type="server"/>
+
+    <!-- Database Exports -->
+    <export function="db_query" type="server"/>
+    <export function="db_execute" type="server"/>
+    <export function="db_queryAsync" type="server"/>
+    <export function="db_fetchOne" type="server"/>
+    <export function="db_fetchAll" type="server"/>
+    <export function="db_isConnected" type="server"/>
+    <export function="getAccountBySerial" type="server"/>
+    <export function="getAccountByUsername" type="server"/>
+    <export function="getAccountById" type="server"/>
+    <export function="savePlayerData" type="server"/>
+    <export function="getPlayerSettings" type="server"/>
+    <export function="savePlayerSettings" type="server"/>
 
     <export function="showNotification" type="client"/>
     <export function="playSound" type="client"/>

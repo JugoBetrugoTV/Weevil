@@ -1,6 +1,18 @@
 --[[
     Jebiga Multi-Gamemode - Custom Chat System (Server)
+    Uses centralized MySQL database from jebiga_core
 ]]
+
+-- Log chat message to database
+function logChatMessage(player, message, channel)
+    local accountId = getElementData(player, "jebiga:accountId")
+    if not accountId then return end
+
+    exports.jebiga_core:db_execute(
+        "INSERT INTO chat_log (account_id, channel, message) VALUES (?, ?, ?)",
+        accountId, channel or "global", message
+    )
+end
 
 -- Override default chat
 addEventHandler("onPlayerChat", root, function(message, type)
@@ -49,6 +61,9 @@ addEventHandler("onPlayerChat", root, function(message, type)
         triggerClientEvent(p, "jebiga:chat:message", resourceRoot, formatted, message)
     end
 
+    -- Log to database
+    logChatMessage(player, message, "global")
+
     -- Also output to server log
     outputServerLog("[CHAT] " .. name .. ": " .. message)
 end)
@@ -76,6 +91,9 @@ addEventHandler("onPlayerChat", root, function(message, type)
         for _, p in ipairs(getPlayersInTeam(team)) do
             triggerClientEvent(p, "jebiga:chat:message", resourceRoot, formatted, message)
         end
+
+        -- Log to database
+        logChatMessage(player, message, "team")
     end
 end)
 

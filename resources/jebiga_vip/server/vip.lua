@@ -1,6 +1,7 @@
 --[[
     Jebiga Multi-Gamemode - VIP/Donatorship System
     Premium features for VIP players
+    Uses centralized MySQL database from jebiga_core
 ]]
 
 -- VIP levels
@@ -11,6 +12,95 @@ local vipLevels = {
     [3] = { name = "Premium", color = {155, 89, 182}, prefix = "[PREMIUM]", multiplier = 2.5 },
     [4] = { name = "Elite", color = {241, 196, 15}, prefix = "[ELITE]", multiplier = 3.0 }
 }
+
+-- ============================================
+-- DATABASE INTEGRATION
+-- ============================================
+
+function loadPlayerVIP(player)
+    local serial = getPlayerSerial(player)
+    local account = exports.jebiga_core:getAccountBySerial(serial)
+
+    if account then
+        local vipLevel = account.vip_level or 0
+        local vipExpires = account.vip_expires
+
+        -- Check if VIP expired
+        if vipExpires and vipLevel > 0 then
+            local now = getRealTime()
+            local expiry = vipExpires
+
+            -- Parse datetime string if needed
+            if type(expiry) == "string" then
+                -- VIP still valid, set data
+                setElementData(player, "jebiga:vip", vipLevel)
+                setElementData(player, "jebiga:vipExpiry", expiry)
+                setElementData(player, "jebiga:accountId", account.id)
+
+                local levelData = vipLevels[vipLevel]
+                if levelData then
+                    setElementData(player, "jebiga:vipPrefix", levelData.prefix)
+                end
+            end
+        else
+            setElementData(player, "jebiga:vip", vipLevel)
+            setElementData(player, "jebiga:accountId", account.id)
+
+            local levelData = vipLevels[vipLevel]
+            if levelData and levelData.prefix then
+                setElementData(player, "jebiga:vipPrefix", levelData.prefix)
+            end
+        end
+
+        return vipLevel
+    end
+
+    return 0
+end
+
+function savePlayerVIP(player, level, durationDays)
+    local accountId = getElementData(player, "jebiga:accountId")
+    if not accountId then return false end
+
+    local expiryDate = nil
+    if durationDays and durationDays > 0 then
+        local now = getRealTime()
+        local expiry = now.timestamp + (durationDays * 86400)
+        expiryDate = os.date("%Y-%m-%d %H:%M:%S", expiry)
+    end
+
+    -- Update account
+    exports.jebiga_core:db_execute(
+        "UPDATE accounts SET vip_level = ?, vip_expires = ? WHERE id = ?",
+        level, expiryDate, accountId
+    )
+
+    -- Log VIP history
+    if level > 0 then
+        exports.jebiga_core:db_execute(
+            "INSERT INTO vip_history (account_id, vip_level, duration_days, expires_at) VALUES (?, ?, ?, ?)",
+            accountId, level, durationDays or 0, expiryDate or "2099-12-31 23:59:59"
+        )
+    end
+
+    return true
+end
+
+-- Load VIP on player join
+addEventHandler("onPlayerJoin", root, function()
+    setTimer(function(player)
+        if isElement(player) then
+            loadPlayerVIP(player)
+        end
+    end, 2000, 1, source)
+end)
+
+-- Load VIP for existing players on resource start
+addEventHandler("onResourceStart", resourceRoot, function()
+    for _, player in ipairs(getElementsByType("player")) do
+        loadPlayerVIP(player)
+    end
+end)
 
 -- VIP perks by level
 local vipPerks = {
@@ -62,7 +152,14 @@ function setPlayerVIP(player, level, duration)
         setElementData(player, "jebiga:vipExpiry", expiry)
     end
 
+    -- Save to database
+    savePlayerVIP(player, level, duration)
+
     local levelData = vipLevels[level]
+    if levelData then
+        setElementData(player, "jebiga:vipPrefix", levelData.prefix)
+    end
+
     if level > 0 then
         outputChatBox("#" .. rgbToHex(levelData.color) .. "[VIP] #FFFFFFYou are now " .. levelData.name .. "!", player, 255, 255, 255, true)
         triggerClientEvent(player, "jebiga:vip:updated", resourceRoot, level, levelData)

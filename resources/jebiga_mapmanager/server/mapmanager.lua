@@ -1,6 +1,7 @@
 --[[
     Jebiga Multi-Gamemode - Map Manager
     Handles map loading, voting, rotation, and synchronization
+    Uses centralized MySQL database from jebiga_core
 ]]
 
 -- Map data
@@ -28,6 +29,90 @@ local config = {
 local recentMaps = {}
 local rtvVotes = {}
 local lastRTV = 0
+
+-- ============================================
+-- DATABASE HELPERS
+-- ============================================
+
+function getMapFromDatabase(resourceName)
+    return exports.jebiga_core:db_fetchOne(
+        "SELECT * FROM maps WHERE resource_name = ?", resourceName
+    )
+end
+
+function saveMapToDatabase(mapData)
+    local existing = getMapFromDatabase(mapData.name)
+
+    if existing then
+        -- Update plays
+        exports.jebiga_core:db_execute(
+            "UPDATE maps SET plays = plays + 1 WHERE resource_name = ?",
+            mapData.name
+        )
+        return existing.id
+    else
+        -- Insert new map
+        exports.jebiga_core:db_execute(
+            "INSERT INTO maps (resource_name, display_name, gamemode, author) VALUES (?, ?, ?, ?)",
+            mapData.name,
+            mapData.displayName or mapData.name,
+            mapData.gamemode or "unknown",
+            mapData.author or "Unknown"
+        )
+
+        local newMap = getMapFromDatabase(mapData.name)
+        return newMap and newMap.id or nil
+    end
+end
+
+function rateMap(player, mapName, rating)
+    local accountId = getElementData(player, "jebiga:accountId")
+    if not accountId then return false end
+
+    local mapData = getMapFromDatabase(mapName)
+    if not mapData then return false end
+
+    -- Check if already rated
+    local existing = exports.jebiga_core:db_fetchOne(
+        "SELECT * FROM map_ratings WHERE account_id = ? AND map_id = ?",
+        accountId, mapData.id
+    )
+
+    if existing then
+        -- Update rating
+        local oldRating = existing.rating
+        exports.jebiga_core:db_execute(
+            "UPDATE map_ratings SET rating = ? WHERE account_id = ? AND map_id = ?",
+            rating, accountId, mapData.id
+        )
+        exports.jebiga_core:db_execute(
+            "UPDATE maps SET rating_sum = rating_sum - ? + ? WHERE id = ?",
+            oldRating, rating, mapData.id
+        )
+    else
+        -- New rating
+        exports.jebiga_core:db_execute(
+            "INSERT INTO map_ratings (account_id, map_id, rating) VALUES (?, ?, ?)",
+            accountId, mapData.id, rating
+        )
+        exports.jebiga_core:db_execute(
+            "UPDATE maps SET rating_sum = rating_sum + ?, rating_count = rating_count + 1 WHERE id = ?",
+            rating, mapData.id
+        )
+    end
+
+    return true
+end
+
+function getMapRating(mapName)
+    local mapData = getMapFromDatabase(mapName)
+    if not mapData or mapData.rating_count == 0 then
+        return 0, 0
+    end
+
+    local average = mapData.rating_sum / mapData.rating_count
+    return average, mapData.rating_count
+end
 
 -- ============================================
 -- MAP SCANNING
@@ -144,6 +229,9 @@ function loadMap(mapName, gamemode)
     if success then
         currentMap = mapName
         mapData.timesPlayed = mapData.timesPlayed + 1
+
+        -- Save to database
+        saveMapToDatabase(mapData)
 
         -- Add to recent maps
         table.insert(recentMaps, 1, mapName)
@@ -395,6 +483,50 @@ end)
 
 addCommandHandler("maplist", function(player, cmd, gamemode)
     triggerEvent("jebiga:map:request", player, gamemode)
+end)
+
+addCommandHandler("ratemap", function(player, cmd, ratingStr)
+    if not currentMap then
+        outputChatBox("#E74C3C[MAP] #FFFFFFNo map is currently playing!", player, 255, 255, 255, true)
+        return
+    end
+
+    local rating = tonumber(ratingStr)
+    if not rating or rating < 1 or rating > 5 then
+        outputChatBox("#E74C3C[MAP] #FFFFFFUsage: /ratemap [1-5]", player, 255, 255, 255, true)
+        return
+    end
+
+    if rateMap(player, currentMap, rating) then
+        local avg, count = getMapRating(currentMap)
+        outputChatBox("#2980B9[MAP] #FFFFFFYou rated this map " .. rating .. "/5. Average: " .. string.format("%.1f", avg) .. " (" .. count .. " votes)", player, 255, 255, 255, true)
+    else
+        outputChatBox("#E74C3C[MAP] #FFFFFFCouldn't rate map. Make sure you're logged in!", player, 255, 255, 255, true)
+    end
+end)
+
+addCommandHandler("mapinfo", function(player, cmd)
+    if not currentMap then
+        outputChatBox("#E74C3C[MAP] #FFFFFFNo map is currently playing!", player, 255, 255, 255, true)
+        return
+    end
+
+    local mapData = loadedMaps[currentMap]
+    local dbMap = getMapFromDatabase(currentMap)
+    local avg, count = getMapRating(currentMap)
+
+    outputChatBox("#2980B9═══════════════════════════", player, 255, 255, 255, true)
+    outputChatBox("#2980B9       MAP INFORMATION       ", player, 255, 255, 255, true)
+    outputChatBox("#2980B9═══════════════════════════", player, 255, 255, 255, true)
+    outputChatBox("#FFFFFF Name: #95A5A6" .. (mapData and mapData.displayName or currentMap), player, 255, 255, 255, true)
+    outputChatBox("#FFFFFF Author: #95A5A6" .. (mapData and mapData.author or "Unknown"), player, 255, 255, 255, true)
+    outputChatBox("#FFFFFF Gamemode: #95A5A6" .. (mapData and mapData.gamemode or "unknown"), player, 255, 255, 255, true)
+    if dbMap then
+        outputChatBox("#FFFFFF Times Played: #95A5A6" .. dbMap.plays, player, 255, 255, 255, true)
+    end
+    if count > 0 then
+        outputChatBox("#FFFFFF Rating: #F1C40F" .. string.format("%.1f", avg) .. "/5 #95A5A6(" .. count .. " votes)", player, 255, 255, 255, true)
+    end
 end)
 
 -- ============================================

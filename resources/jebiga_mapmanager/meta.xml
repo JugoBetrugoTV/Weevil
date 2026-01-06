@@ -1,0 +1,22 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_mapmanager" version="1.0.0" type="script" description="Map Manager with voting"/>
+
+    <!-- Server Scripts -->
+    <script src="server/mapmanager.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/mapmanager.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="getCurrentMap" type="server"/>
+    <export function="getMapList" type="server"/>
+    <export function="loadMap" type="server"/>
+    <export function="queueMap" type="server"/>
+    <export function="startMapVote" type="server"/>
+    <export function="scanAllMaps" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

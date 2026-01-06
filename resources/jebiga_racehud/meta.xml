@@ -1,0 +1,16 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_racehud" version="1.0.0" type="script" description="Race HUD with checkpoints and timing"/>
+
+    <!-- Client Scripts -->
+    <script src="client/racehud.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="setRaceData" type="client"/>
+    <export function="getRaceData" type="client"/>
+    <export function="setRaceActive" type="client"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

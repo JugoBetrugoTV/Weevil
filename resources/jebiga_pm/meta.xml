@@ -1,0 +1,10 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_pm" version="1.0.0" type="script" description="Private Messages System"/>
+
+    <script src="server/pm.lua" type="server"/>
+    <script src="client/pm.lua" type="client"/>
+
+    <include resource="jebiga_core"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

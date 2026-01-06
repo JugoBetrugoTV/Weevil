@@ -1,0 +1,19 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_killmessages" version="1.0.0" type="script" description="Kill Messages and Death List"/>
+
+    <!-- Server Scripts -->
+    <script src="server/killmessages.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/killmessages.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="getKillStreak" type="server"/>
+    <export function="resetKillStreak" type="server"/>
+    <export function="addKillToList" type="client"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

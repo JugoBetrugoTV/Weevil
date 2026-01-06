@@ -1,0 +1,21 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_vip" version="1.0.0" type="script" description="VIP/Donatorship System"/>
+
+    <!-- Server Scripts -->
+    <script src="server/vip.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/vip.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="getPlayerVIP" type="server"/>
+    <export function="setPlayerVIP" type="server"/>
+    <export function="getVIPMultiplier" type="server"/>
+    <export function="getVIPPrefix" type="server"/>
+    <export function="isVIP" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

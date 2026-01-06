@@ -1,0 +1,15 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_nametags" version="1.0.0" type="script" description="Custom 3D Nametags"/>
+
+    <!-- Client Scripts -->
+    <script src="client/nametags.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="setNametagsEnabled" type="client"/>
+    <export function="setNametagSetting" type="client"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

@@ -1,0 +1,23 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_settings" version="1.0.0" type="script" description="Player Settings System"/>
+
+    <!-- Shared Scripts -->
+    <script src="shared/settings.lua" type="shared"/>
+
+    <!-- Server Scripts -->
+    <script src="server/settings.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/settings.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="getPlayerSettings" type="server"/>
+    <export function="getPlayerSetting" type="server"/>
+    <export function="getSetting" type="client"/>
+    <export function="setSetting" type="client"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

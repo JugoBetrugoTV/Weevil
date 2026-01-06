@@ -1,0 +1,12 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_chat" version="1.0.0" type="script" description="Custom Chat System"/>
+
+    <script src="server/chat.lua" type="server"/>
+    <script src="client/chat.lua" type="client"/>
+
+    <include resource="jebiga_core"/>
+
+    <export function="sendChatMessage" type="client"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

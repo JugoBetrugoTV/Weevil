@@ -10,6 +10,7 @@ local resources = {
 
     -- Support systems
     "jebiga_lobby",
+    "jebiga_mapmanager",
     "jebiga_scoreboard",
     "jebiga_toptimes",
     "jebiga_userpanel",
@@ -17,11 +18,21 @@ local resources = {
     "jebiga_garage",
     "jebiga_admin",
 
-    -- New Vultaic-inspired features
+    -- Vultaic-inspired features
     "jebiga_neons",
     "jebiga_tuning",
     "jebiga_music",
     "jebiga_clans",
+
+    -- Additional features
+    "jebiga_chat",
+    "jebiga_killmessages",
+    "jebiga_nametags",
+    "jebiga_racehud",
+    "jebiga_vip",
+    "jebiga_pm",
+    "jebiga_settings",
+    "jebiga_antispam",
 
     -- Gamemodes
     "jebiga_dm",
@@ -84,7 +95,7 @@ addEventHandler("onResourceStart", resourceRoot, function()
     outputServerLog("╔══════════════════════════════════════════╗")
     outputServerLog("║                                          ║")
     outputServerLog("║       JEBIGA MULTI-GAMEMODE SERVER       ║")
-    outputServerLog("║              Version 2.0.0               ║")
+    outputServerLog("║              Version 2.2.0               ║")
     outputServerLog("║                                          ║")
     outputServerLog("║         The Ultimate MTA Experience      ║")
     outputServerLog("║                                          ║")
@@ -153,24 +164,20 @@ addCommandHandler("jebigastatus", function(player)
     end
 
     outputChatBox("#2980B9║  #95A5A6Resources: #2ECC71" .. running .. "/" .. #resources .. " running       #2980B9║", player, 255, 255, 255, true)
-    outputChatBox("#2980B9║  #95A5A6Version:   #FFFFFF2.0.0              #2980B9║", player, 255, 255, 255, true)
+    outputChatBox("#2980B9║  #95A5A6Version:   #FFFFFF2.2.0              #2980B9║", player, 255, 255, 255, true)
     outputChatBox("#2980B9╚═══════════════════════════════╝", player, 255, 255, 255, true)
 end)
 
 -- Help command
 addCommandHandler("jebigahelp", function(player)
-    outputChatBox("#2980B9[JEBIGA] #FFFFFFAvailable Commands:", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  /lobby #FFFFFF- Return to lobby", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  /maps <gamemode> #FFFFFF- List maps for gamemode", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  /neon #FFFFFF- Open neon lights menu", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  /tuning #FFFFFF- Open vehicle tuning", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  /music #FFFFFF- Open music player", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  /clan #FFFFFF- Open clan system", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  /cc <msg> #FFFFFF- Clan chat", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  /jebigastatus #FFFFFF- Server status", player, 255, 255, 255, true)
+    outputChatBox("#2980B9[JEBIGA] #FFFFFFCommands:", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  /lobby #FFFFFF- Lobby | #95A5A6/rtv #FFFFFF- Rock the vote", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  /neon #FFFFFF- Neons | #95A5A6/tuning #FFFFFF- Tuning | #95A5A6/music #FFFFFF- Music", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  /clan #FFFFFF- Clan | #95A5A6/cc <msg> #FFFFFF- Clan chat", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  /pm <player> <msg> #FFFFFF- PM | #95A5A6/r <msg> #FFFFFF- Reply", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  /vip #FFFFFF- VIP info | #95A5A6/settings #FFFFFF- Settings", player, 255, 255, 255, true)
     outputChatBox("#2980B9[JEBIGA] #FFFFFFKeybinds:", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  F1 #FFFFFF- Gamemode selection | #95A5A6F3 #FFFFFF- User panel", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  F6 #FFFFFF- Vehicle tuning | #95A5A6F7 #FFFFFF- Toggle HUD", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  F8 #FFFFFF- Music player | #95A5A6F9 #FFFFFF- Clan panel", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  N #FFFFFF- Neon lights | #95A5A6TAB #FFFFFF- Scoreboard", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  F1 #FFFFFF- Lobby | #95A5A6F2 #FFFFFF- Vote | #95A5A6F3 #FFFFFF- User panel", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  F6 #FFFFFF- Tuning | #95A5A6F7 #FFFFFF- HUD | #95A5A6F8 #FFFFFF- Music | #95A5A6F9 #FFFFFF- Clan", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  F10 #FFFFFF- Settings | #95A5A6N #FFFFFF- Neons | #95A5A6TAB #FFFFFF- Scoreboard", player, 255, 255, 255, true)
 end)

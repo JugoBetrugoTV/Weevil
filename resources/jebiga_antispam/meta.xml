@@ -1,0 +1,9 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_antispam" version="1.0.0" type="script" description="Anti-spam and Security"/>
+
+    <script src="server/antispam.lua" type="server"/>
+
+    <include resource="jebiga_core"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

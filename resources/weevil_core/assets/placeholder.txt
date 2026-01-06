@@ -1,0 +1,6 @@
+This folder is for assets (fonts, images, sounds).
+
+Add your custom assets here:
+- fonts/roboto.ttf (or other fonts)
+- images/logo.png
+- sounds/ (custom sounds)

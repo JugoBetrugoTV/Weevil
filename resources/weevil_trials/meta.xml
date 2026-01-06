@@ -1,0 +1,10 @@
+<meta>
+    <info author="Weevil Team" name="weevil_trials" version="1.0.0" type="gamemode" description="Weevil Trials (Motorbike Obstacle Courses)"/>
+
+    <script src="server/trials_server.lua" type="server"/>
+    <script src="client/trials_client.lua" type="client"/>
+
+    <include resource="weevil_core"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

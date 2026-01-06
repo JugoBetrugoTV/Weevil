@@ -1,0 +1,14 @@
+<meta>
+    <info author="Weevil Team" name="weevil_achievements" version="1.0.0" type="script" description="Weevil MGM Achievements"/>
+
+    <script src="server/achievements.lua" type="server"/>
+    <script src="client/achievements_gui.lua" type="client"/>
+
+    <include resource="weevil_core"/>
+
+    <export function="unlockAchievement" type="server"/>
+    <export function="hasAchievement" type="server"/>
+    <export function="getPlayerAchievements" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

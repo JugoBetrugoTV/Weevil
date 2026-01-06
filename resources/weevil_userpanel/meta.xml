@@ -1,0 +1,10 @@
+<meta>
+    <info author="Weevil Team" name="weevil_userpanel" version="1.0.0" type="script" description="Weevil MGM User Panel"/>
+
+    <script src="server/userpanel.lua" type="server"/>
+    <script src="client/userpanel_gui.lua" type="client"/>
+
+    <include resource="weevil_core"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

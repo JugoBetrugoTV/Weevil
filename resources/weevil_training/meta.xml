@@ -1,0 +1,7 @@
+<meta>
+    <info author="Weevil Team" name="weevil_training" version="1.0.0" type="gamemode" description="Weevil Training (Practice your skills)"/>
+    <script src="server/training_server.lua" type="server"/>
+    <script src="client/training_client.lua" type="client"/>
+    <include resource="weevil_core"/>
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

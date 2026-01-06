@@ -1,0 +1,16 @@
+<meta>
+    <info author="Weevil Team" name="weevil_lobby" version="1.0.0" type="script" description="Weevil MGM Lobby System"/>
+
+    <!-- Server Scripts -->
+    <script src="server/lobby.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/lobby_gui.lua" type="client"/>
+    <script src="client/lobby_camera.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="weevil_core"/>
+    <include resource="weevil_accounts"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

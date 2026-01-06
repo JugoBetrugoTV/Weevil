@@ -1,0 +1,19 @@
+<meta>
+    <info author="Weevil Team" name="weevil_toptimes" version="1.0.0" type="script" description="Weevil MGM TopTimes System"/>
+
+    <!-- Server Scripts -->
+    <script src="server/toptimes.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/toptimes_gui.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="weevil_core"/>
+
+    <!-- Exports -->
+    <export function="getTopTimes" type="server"/>
+    <export function="addTopTime" type="server"/>
+    <export function="getPlayerTopTime" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

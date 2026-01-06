@@ -48,6 +48,13 @@ function showLoginGUI()
     targetAlpha = 255
     showCursor(true)
 
+    -- Hide all HUD - player is not spawned yet
+    setPlayerHudComponentVisible("all", false)
+    showChat(false)
+
+    -- Set fixed camera position (scenic view - no character visible)
+    setCameraMatrix(1500, -1700, 80, 1481, -1770, 18)
+
     -- Reset fields
     for tab, fields in pairs(inputFields) do
         for name, field in pairs(fields) do
@@ -67,6 +74,7 @@ function hideLoginGUI()
     targetAlpha = 0
     showCursor(false)
 
+    -- Note: Don't restore HUD here - lobby will handle that
     -- Will be hidden after fade out
 end
 
@@ -317,8 +325,8 @@ function handleLoginClick(button, state, mx, my)
     if currentTab == "login" then
         if mx >= panelX and mx <= panelX + panelW and my >= panelY + panelH - 25 and my <= panelY + panelH then
             hideLoginGUI()
-            -- Play as guest
-            outputChatBox("#FFFF00[Jebiga] #FFFFFFPlaying as guest. Use /register to save your progress!", 255, 255, 255, true)
+            -- Play as guest - trigger server to handle it
+            triggerServerEvent("jebiga:account:requestGuestLogin", localPlayer)
             return
         end
     end
@@ -362,7 +370,8 @@ function handleLoginKey(button, press)
             end
         end
     elseif button == "escape" then
-        hideLoginGUI()
+        -- Don't allow escape to close login - must login or register
+        -- hideLoginGUI()
     end
 end
 
@@ -483,13 +492,14 @@ end)
 addEventHandler("onClientResourceStart", resourceRoot, function()
     createLoginGUI()
 
-    -- Show login GUI on join
+    -- Show login GUI immediately - player is NOT spawned
+    -- They must login before seeing anything else
     setTimer(function()
         local loggedIn = getElementData(localPlayer, "jebiga:loggedIn")
         if not loggedIn then
             showLoginGUI()
         end
-    end, 1500, 1)
+    end, 500, 1)
 end)
 
 -- Command to show login
@@ -510,14 +520,14 @@ addCommandHandler("account", function()
     end
 end)
 
--- Show on player spawn if not logged in
+-- Note: Player won't spawn until they join a gamemode
+-- This event handler is kept for compatibility but shouldn't trigger before login
 addEventHandler("onClientPlayerSpawn", localPlayer, function()
-    setTimer(function()
-        local loggedIn = getElementData(localPlayer, "jebiga:loggedIn")
-        if not loggedIn and not isGUIVisible then
-            showLoginGUI()
-        end
-    end, 500, 1)
+    -- If somehow spawned without being logged in, show login
+    local loggedIn = getElementData(localPlayer, "jebiga:loggedIn")
+    if not loggedIn and not isGUIVisible then
+        showLoginGUI()
+    end
 end)
 
 -- Export functions

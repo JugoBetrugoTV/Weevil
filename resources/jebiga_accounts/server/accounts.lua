@@ -209,6 +209,10 @@ function loginAccount(player, username, password)
         totalPoints = account.total_points or 0
     })
 
+    -- Trigger the core event that player is now logged in
+    -- This will show the lobby panel (player still not spawned)
+    triggerEvent("jebiga:onPlayerLoggedIn", player, account.id)
+
     outputDebugString("[Jebiga Accounts] Player logged in: " .. username)
 
     return true, "Welcome back, " .. username .. "!"
@@ -411,6 +415,9 @@ function autoLoginBySerial(player)
             exports.jebiga_core:loadPlayerData(player, account.id)
         end
 
+        -- Trigger the core event that player is now logged in
+        triggerEvent("jebiga:onPlayerLoggedIn", player, account.id)
+
         outputChatBox("#00FF00[Jebiga] #FFFFFFAuto-login: Welcome back, " .. account.username .. "!", player, 255, 255, 255, true)
 
         return true
@@ -422,7 +429,12 @@ end
 function enableGuestMode(player)
     local guestName = "Guest_" .. math.random(10000, 99999)
     setPlayerName(player, guestName)
-    setElementData(player, "jebiga:loggedIn", false)
+    setElementData(player, "jebiga:loggedIn", true) -- Treat guest as "logged in" for lobby access
+    setElementData(player, "jebiga:isGuest", true)
+
+    -- Trigger the core event so they can access the lobby
+    -- Account ID is nil for guests
+    triggerEvent("jebiga:onPlayerLoggedIn", player, nil)
 
     outputChatBox("#FFFF00[Jebiga] #FFFFFFPlaying as guest. Your progress won't be saved.", player, 255, 255, 255, true)
     outputChatBox("#FFFF00[Jebiga] #FFFFFFUse /register to create an account.", player, 255, 255, 255, true)
@@ -461,6 +473,13 @@ addEventHandler("jebiga:account:requestLogout", root, function()
     if success then
         triggerClientEvent(client, "jebiga:account:logout", client, message)
     end
+end)
+
+addEvent("jebiga:account:requestGuestLogin", true)
+addEventHandler("jebiga:account:requestGuestLogin", root, function()
+    -- Enable guest mode - this will trigger the lobby
+    enableGuestMode(client)
+    triggerClientEvent(client, "jebiga:account:loginSuccess", client, "Playing as Guest")
 end)
 
 -- Handle player disconnect

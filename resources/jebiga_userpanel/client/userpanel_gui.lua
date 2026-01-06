@@ -70,8 +70,8 @@ function toggleUserPanel()
     end
 end
 
--- Keybind
-bindKey("F3", "down", function()
+-- Keybind - U to open user panel
+bindKey("u", "down", function()
     toggleUserPanel()
 end)
 
@@ -294,7 +294,7 @@ function drawSidebar(x, y, w, h, alpha)
     -- Footer info
     local footerY = y + h - 60 * scale
     dxDrawRectangle(x, footerY, w, 1, tocolor(40, 45, 55, alpha * 0.5), false)
-    dxDrawText("Press F3 to close", x, footerY + 10, x + w, footerY + 30, tocolor(80, 90, 100, alpha * 0.7), 0.8 * scale, "default", "center", "top", false, false, false)
+    dxDrawText("Press U to close", x, footerY + 10, x + w, footerY + 30, tocolor(80, 90, 100, alpha * 0.7), 0.8 * scale, "default", "center", "top", false, false, false)
     dxDrawText("Jebiga Gaming", x, footerY + 30, x + w, footerY + 50, tocolor(41, 128, 185, alpha * 0.6), 0.75 * scale, "default", "center", "top", false, false, false)
 end
 

@@ -409,7 +409,7 @@ function submitForm()
         end
 
         -- Send login request
-        triggerServerEvent(Events.Account.REQUEST_LOGIN, localPlayer, username, password)
+        triggerServerEvent("jebiga:account:requestLogin", localPlayer, username, password)
 
     else -- register
         local username = fields.username.text
@@ -443,40 +443,39 @@ function submitForm()
         end
 
         -- Send register request
-        triggerServerEvent(Events.Account.REQUEST_REGISTER, localPlayer, username, password, email)
+        triggerServerEvent("jebiga:account:requestRegister", localPlayer, username, password, email)
     end
 end
 
 -- Handle server responses
-addEvent(Events.Account.LOGIN_SUCCESS, true)
-addEventHandler(Events.Account.LOGIN_SUCCESS, root, function(message)
+addEvent("jebiga:account:loginSuccess", true)
+addEventHandler("jebiga:account:loginSuccess", root, function(data)
+    local message = type(data) == "string" and data or "Login successful!"
     successMessage = message
     hideLoginGUI()
-    exports.jebiga_core:showNotification("success", message, 4000)
+    outputChatBox("#00FF00[Jebiga] #FFFFFF" .. message, 255, 255, 255, true)
 end)
 
-addEvent(Events.Account.LOGIN_FAILED, true)
-addEventHandler(Events.Account.LOGIN_FAILED, root, function(message)
-    errorMessage = message
-    exports.jebiga_core:showNotification("error", message, 4000)
+addEvent("jebiga:account:loginFailed", true)
+addEventHandler("jebiga:account:loginFailed", root, function(message)
+    errorMessage = message or "Login failed"
 end)
 
-addEvent(Events.Account.REGISTER_SUCCESS, true)
-addEventHandler(Events.Account.REGISTER_SUCCESS, root, function(message)
-    successMessage = message
+addEvent("jebiga:account:registerSuccess", true)
+addEventHandler("jebiga:account:registerSuccess", root, function(message)
+    successMessage = message or "Registration successful!"
     currentTab = "login" -- Switch to login tab
-    exports.jebiga_core:showNotification("success", message, 4000)
+    outputChatBox("#00FF00[Jebiga] #FFFFFF" .. (message or "Account created!"), 255, 255, 255, true)
 end)
 
-addEvent(Events.Account.REGISTER_FAILED, true)
-addEventHandler(Events.Account.REGISTER_FAILED, root, function(message)
-    errorMessage = message
-    exports.jebiga_core:showNotification("error", message, 4000)
+addEvent("jebiga:account:registerFailed", true)
+addEventHandler("jebiga:account:registerFailed", root, function(message)
+    errorMessage = message or "Registration failed"
 end)
 
-addEvent(Events.Account.LOGOUT, true)
-addEventHandler(Events.Account.LOGOUT, root, function(message)
-    exports.jebiga_core:showNotification("info", message, 3000)
+addEvent("jebiga:account:logout", true)
+addEventHandler("jebiga:account:logout", root, function(message)
+    outputChatBox("#FFFF00[Jebiga] #FFFFFF" .. (message or "Logged out"), 255, 255, 255, true)
     showLoginGUI()
 end)
 
@@ -486,10 +485,11 @@ addEventHandler("onClientResourceStart", resourceRoot, function()
 
     -- Show login GUI on join
     setTimer(function()
-        if not exports.jebiga_accounts:isLoggedIn(localPlayer) then
+        local loggedIn = getElementData(localPlayer, "jebiga:loggedIn")
+        if not loggedIn then
             showLoginGUI()
         end
-    end, 1000, 1)
+    end, 1500, 1)
 end)
 
 -- Command to show login
@@ -501,9 +501,26 @@ addCommandHandler("loginpanel", function()
     end
 end)
 
--- Show on player spawn if not logged in
-addEventHandler("onClientPlayerSpawn", localPlayer, function()
-    if not exports.jebiga_accounts:isLoggedIn(localPlayer) then
+-- Also allow /account command
+addCommandHandler("account", function()
+    if isGUIVisible then
+        hideLoginGUI()
+    else
         showLoginGUI()
     end
 end)
+
+-- Show on player spawn if not logged in
+addEventHandler("onClientPlayerSpawn", localPlayer, function()
+    setTimer(function()
+        local loggedIn = getElementData(localPlayer, "jebiga:loggedIn")
+        if not loggedIn and not isGUIVisible then
+            showLoginGUI()
+        end
+    end, 500, 1)
+end)
+
+-- Export functions
+function isLoginGUIVisible()
+    return isGUIVisible
+end

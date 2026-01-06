@@ -1,62 +1,63 @@
 --[[
     Jebiga Multi-Gamemode - Player Manager
     Handles player data, stats, and persistence
+    Uses centralized database from database.lua
 ]]
 
 local playerCache = {}
 
+-- ============================================
+-- PLAYER DATA LOADING
+-- ============================================
+
 -- Load player data from database
 function loadPlayerData(player, accountId)
-    local queryHandle = dbQuery(connection, [[
+    if not accountId then return nil end
+
+    local data = fetchOne([[
         SELECT * FROM accounts WHERE id = ?
     ]], accountId)
 
-    if not queryHandle then return nil end
+    if not data then return nil end
 
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
+    playerCache[player] = {
+        accountId = data.id,
+        username = data.username,
+        email = data.email,
+        adminLevel = data.admin_level or 0,
+        vipLevel = data.vip_level or 0,
+        vipExpires = data.vip_expires,
+        money = data.money or (Config and Config.Currency and Config.Currency.startMoney or 5000),
+        totalPoints = data.total_points or 0,
+        playtime = data.playtime or 0,
+        lastLogin = data.last_login,
+        createdAt = data.created_at,
+        banned = data.banned == 1,
+        banReason = data.ban_reason,
+        muted = data.muted == 1,
+        muteExpires = data.mute_expires,
+        settings = data.settings and Utils and Utils.jsonDecode and Utils.jsonDecode(data.settings) or {}
+    }
 
-    if result and #result > 0 then
-        local data = result[1]
+    -- Set element data for other resources
+    setElementData(player, "jebiga:accountId", accountId)
+    setElementData(player, "jebiga:money", playerCache[player].money)
+    setElementData(player, "jebiga:points", playerCache[player].totalPoints)
+    setElementData(player, "jebiga:adminLevel", playerCache[player].adminLevel)
+    setElementData(player, "jebiga:vipLevel", playerCache[player].vipLevel)
 
-        playerCache[player] = {
-            accountId = data.id,
-            username = data.username,
-            email = data.email,
-            adminLevel = data.admin_level or 0,
-            vipLevel = data.vip_level or 0,
-            vipExpires = data.vip_expires,
-            money = data.money or Config.Currency.startMoney,
-            totalPoints = data.total_points or 0,
-            playtime = data.playtime or 0,
-            lastLogin = data.last_login,
-            createdAt = data.created_at,
-            banned = data.banned == 1,
-            banReason = data.ban_reason,
-            muted = data.muted == 1,
-            muteExpires = data.mute_expires,
-            settings = Utils.jsonDecode(data.settings) or {}
-        }
+    -- Load gamemode-specific stats
+    loadPlayerStats(player, accountId)
 
-        -- Load gamemode-specific stats
-        loadPlayerStats(player, accountId)
-
-        return playerCache[player]
-    end
-
-    return nil
+    outputDebugString("[Jebiga] Loaded player data for account " .. accountId)
+    return playerCache[player]
 end
 
 -- Load player stats for all gamemodes
 function loadPlayerStats(player, accountId)
-    local queryHandle = dbQuery(connection, [[
+    local result = fetchAll([[
         SELECT * FROM player_stats WHERE account_id = ?
     ]], accountId)
-
-    if not queryHandle then return end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
 
     if not playerCache[player] then return end
 
@@ -78,34 +79,34 @@ function loadPlayerStats(player, accountId)
     end
 
     -- Initialize missing gamemode stats
-    for gamemode, _ in pairs(Config.Gamemodes) do
+    local gamemodes = Config and Config.Gamemodes or {dm = true, race = true, dd = true, hunter = true}
+    for gamemode, _ in pairs(gamemodes) do
         if not playerCache[player].stats[gamemode] then
             playerCache[player].stats[gamemode] = {
-                points = 0,
-                wins = 0,
-                losses = 0,
-                kills = 0,
-                deaths = 0,
-                racesFinished = 0,
-                bestPosition = 0,
-                playtime = 0
+                points = 0, wins = 0, losses = 0, kills = 0,
+                deaths = 0, racesFinished = 0, bestPosition = 0, playtime = 0
             }
 
             -- Insert initial stats into database
-            dbExec(connection, [[
-                INSERT INTO player_stats (account_id, gamemode)
+            execute([[
+                INSERT IGNORE INTO player_stats (account_id, gamemode)
                 VALUES (?, ?)
             ]], accountId, gamemode)
         end
     end
 end
 
+-- ============================================
+-- PLAYER DATA SAVING
+-- ============================================
+
 -- Save player data to database
 function savePlayerData(player)
     local data = playerCache[player]
-    if not data then return false end
+    if not data or not data.accountId then return false end
 
-    dbExec(connection, [[
+    -- Save main account data
+    execute([[
         UPDATE accounts SET
             money = ?,
             total_points = ?,
@@ -113,54 +114,85 @@ function savePlayerData(player)
             settings = ?,
             last_login = NOW()
         WHERE id = ?
-    ]], data.money, data.totalPoints, data.playtime, Utils.jsonEncode(data.settings), data.accountId)
+    ]], data.money, data.totalPoints, data.playtime,
+        Utils and Utils.jsonEncode and Utils.jsonEncode(data.settings) or "{}",
+        data.accountId)
 
     -- Save gamemode stats
-    for gamemode, stats in pairs(data.stats or {}) do
-        dbExec(connection, [[
-            UPDATE player_stats SET
-                points = ?,
-                wins = ?,
-                losses = ?,
-                kills = ?,
-                deaths = ?,
-                races_finished = ?,
-                best_position = ?,
-                playtime = ?
-            WHERE account_id = ? AND gamemode = ?
-        ]], stats.points, stats.wins, stats.losses, stats.kills, stats.deaths,
-            stats.racesFinished, stats.bestPosition, stats.playtime,
-            data.accountId, gamemode)
+    if data.stats then
+        for gamemode, stats in pairs(data.stats) do
+            execute([[
+                UPDATE player_stats SET
+                    points = ?,
+                    wins = ?,
+                    losses = ?,
+                    kills = ?,
+                    deaths = ?,
+                    races_finished = ?,
+                    best_position = ?,
+                    playtime = ?,
+                    last_played = NOW()
+                WHERE account_id = ? AND gamemode = ?
+            ]], stats.points, stats.wins, stats.losses, stats.kills, stats.deaths,
+                stats.racesFinished, stats.bestPosition, stats.playtime,
+                data.accountId, gamemode)
+        end
     end
 
+    outputDebugString("[Jebiga] Saved player data for account " .. data.accountId)
     return true
 end
+
+-- ============================================
+-- PLAYER DATA ACCESS
+-- ============================================
 
 -- Get cached player data
 function getCachedPlayerData(player)
     return playerCache[player]
 end
 
--- Update player money
+-- Check if player has data loaded
+function isPlayerDataLoaded(player)
+    return playerCache[player] ~= nil
+end
+
+-- ============================================
+-- MONEY FUNCTIONS
+-- ============================================
+
 function getPlayerMoney(player)
     local data = playerCache[player]
-    return data and data.money or 0
+    if data then
+        return data.money or 0
+    end
+    return getElementData(player, "jebiga:money") or 0
 end
 
 function addPlayerMoney(player, amount, reason)
     local data = playerCache[player]
-    if not data then return false end
+    if not data then
+        -- Fallback to element data for non-cached players
+        local current = getElementData(player, "jebiga:money") or 0
+        setElementData(player, "jebiga:money", current + amount)
+        return true
+    end
 
-    data.money = data.money + amount
+    data.money = (data.money or 0) + amount
+    setElementData(player, "jebiga:money", data.money)
 
     -- Log transaction
-    dbExec(connection, [[
-        INSERT INTO transaction_log (account_id, type, amount, reason, balance_after)
-        VALUES (?, 'credit', ?, ?, ?)
-    ]], data.accountId, amount, reason or "Unknown", data.money)
+    if data.accountId then
+        execute([[
+            INSERT INTO transactions (account_id, type, amount, reason, balance_after)
+            VALUES (?, 'earn', ?, ?, ?)
+        ]], data.accountId, amount, reason or "Unknown", data.money)
+    end
 
     -- Update client
-    triggerClientEvent(player, Events.Currency.UPDATE_MONEY, player, data.money, amount)
+    if Events and Events.Currency and Events.Currency.UPDATE_MONEY then
+        triggerClientEvent(player, Events.Currency.UPDATE_MONEY, player, data.money, amount)
+    end
 
     return true
 end
@@ -169,23 +201,31 @@ function removePlayerMoney(player, amount, reason)
     local data = playerCache[player]
     if not data then return false end
 
-    if data.money < amount then return false end
+    if (data.money or 0) < amount then return false end
 
     data.money = data.money - amount
+    setElementData(player, "jebiga:money", data.money)
 
     -- Log transaction
-    dbExec(connection, [[
-        INSERT INTO transaction_log (account_id, type, amount, reason, balance_after)
-        VALUES (?, 'debit', ?, ?, ?)
-    ]], data.accountId, -amount, reason or "Unknown", data.money)
+    if data.accountId then
+        execute([[
+            INSERT INTO transactions (account_id, type, amount, reason, balance_after)
+            VALUES (?, 'spend', ?, ?, ?)
+        ]], data.accountId, -amount, reason or "Unknown", data.money)
+    end
 
     -- Update client
-    triggerClientEvent(player, Events.Currency.UPDATE_MONEY, player, data.money, -amount)
+    if Events and Events.Currency and Events.Currency.UPDATE_MONEY then
+        triggerClientEvent(player, Events.Currency.UPDATE_MONEY, player, data.money, -amount)
+    end
 
     return true
 end
 
--- Update player points
+-- ============================================
+-- POINTS FUNCTIONS
+-- ============================================
+
 function getPlayerPoints(player, gamemode)
     local data = playerCache[player]
     if not data then return 0 end
@@ -202,36 +242,39 @@ function addPlayerPoints(player, amount, gamemode)
     if not data then return false end
 
     -- Add to total points
-    data.totalPoints = data.totalPoints + amount
+    data.totalPoints = (data.totalPoints or 0) + amount
+    setElementData(player, "jebiga:points", data.totalPoints)
 
     -- Add to gamemode-specific points if specified
     if gamemode and data.stats and data.stats[gamemode] then
-        data.stats[gamemode].points = data.stats[gamemode].points + amount
+        data.stats[gamemode].points = (data.stats[gamemode].points or 0) + amount
     end
 
     -- Check for VIP bonus
-    if data.vipLevel > 0 and data.vipExpires then
-        local vipExpires = data.vipExpires
-        local now = getRealTime().timestamp
-        if vipExpires > now then
-            local bonus = math.floor(amount * (Config.VIP.bonusMultiplier - 1))
-            data.totalPoints = data.totalPoints + bonus
-            if gamemode and data.stats[gamemode] then
-                data.stats[gamemode].points = data.stats[gamemode].points + bonus
-            end
+    if data.vipLevel and data.vipLevel > 0 then
+        local vipMultiplier = Config and Config.VIP and Config.VIP.bonusMultiplier or 1.5
+        local bonus = math.floor(amount * (vipMultiplier - 1))
+        data.totalPoints = data.totalPoints + bonus
+        if gamemode and data.stats and data.stats[gamemode] then
+            data.stats[gamemode].points = data.stats[gamemode].points + bonus
         end
     end
 
     -- Update client
-    triggerClientEvent(player, Events.Currency.UPDATE_POINTS, player, data.totalPoints, amount, gamemode)
+    if Events and Events.Currency and Events.Currency.UPDATE_POINTS then
+        triggerClientEvent(player, Events.Currency.UPDATE_POINTS, player, data.totalPoints, amount, gamemode)
+    end
 
     -- Check achievements
-    checkPointsAchievements(player)
+    safeCallAchievements(player, "checkPointsAchievements")
 
     return true
 end
 
--- Get player stats
+-- ============================================
+-- STATS FUNCTIONS
+-- ============================================
+
 function getPlayerStats(player, gamemode)
     local data = playerCache[player]
     if not data or not data.stats then return nil end
@@ -243,7 +286,6 @@ function getPlayerStats(player, gamemode)
     return data.stats
 end
 
--- Update player stats
 function updatePlayerStats(player, gamemode, statType, value)
     local data = playerCache[player]
     if not data or not data.stats or not data.stats[gamemode] then return false end
@@ -259,12 +301,16 @@ end
 -- Add win to player
 function addPlayerWin(player, gamemode)
     local data = playerCache[player]
-    if not data or not data.stats or not data.stats[gamemode] then return false end
+    if not data or not data.stats then return false end
 
-    data.stats[gamemode].wins = data.stats[gamemode].wins + 1
+    if not data.stats[gamemode] then
+        data.stats[gamemode] = {points = 0, wins = 0, losses = 0, kills = 0, deaths = 0, racesFinished = 0, bestPosition = 0, playtime = 0}
+    end
+
+    data.stats[gamemode].wins = (data.stats[gamemode].wins or 0) + 1
 
     -- Award points and money
-    local cfg = Config.Gamemodes[gamemode]
+    local cfg = Config and Config.Gamemodes and Config.Gamemodes[gamemode]
     if cfg then
         if cfg.pointsPerWin then
             addPlayerPoints(player, cfg.pointsPerWin, gamemode)
@@ -272,10 +318,14 @@ function addPlayerWin(player, gamemode)
         if cfg.moneyPerWin then
             addPlayerMoney(player, cfg.moneyPerWin, gamemode .. " win")
         end
+    else
+        -- Default rewards
+        addPlayerPoints(player, 50, gamemode)
+        addPlayerMoney(player, 100, gamemode .. " win")
     end
 
     -- Check achievements
-    checkWinAchievements(player, gamemode)
+    safeCallAchievements(player, "checkWinAchievements", gamemode)
 
     return true
 end
@@ -283,12 +333,16 @@ end
 -- Add kill to player
 function addPlayerKill(player, gamemode)
     local data = playerCache[player]
-    if not data or not data.stats or not data.stats[gamemode] then return false end
+    if not data or not data.stats then return false end
 
-    data.stats[gamemode].kills = data.stats[gamemode].kills + 1
+    if not data.stats[gamemode] then
+        data.stats[gamemode] = {points = 0, wins = 0, losses = 0, kills = 0, deaths = 0, racesFinished = 0, bestPosition = 0, playtime = 0}
+    end
+
+    data.stats[gamemode].kills = (data.stats[gamemode].kills or 0) + 1
 
     -- Award points and money
-    local cfg = Config.Gamemodes[gamemode]
+    local cfg = Config and Config.Gamemodes and Config.Gamemodes[gamemode]
     if cfg then
         if cfg.pointsPerKill then
             addPlayerPoints(player, cfg.pointsPerKill, gamemode)
@@ -296,10 +350,14 @@ function addPlayerKill(player, gamemode)
         if cfg.moneyPerKill then
             addPlayerMoney(player, cfg.moneyPerKill, gamemode .. " kill")
         end
+    else
+        -- Default rewards
+        addPlayerPoints(player, 10, gamemode)
+        addPlayerMoney(player, 25, gamemode .. " kill")
     end
 
     -- Check achievements
-    checkKillAchievements(player)
+    safeCallAchievements(player, "checkKillAchievements")
 
     return true
 end
@@ -307,122 +365,122 @@ end
 -- Add death to player
 function addPlayerDeath(player, gamemode)
     local data = playerCache[player]
-    if not data or not data.stats or not data.stats[gamemode] then return false end
+    if not data or not data.stats then return false end
 
-    data.stats[gamemode].deaths = data.stats[gamemode].deaths + 1
+    if not data.stats[gamemode] then
+        data.stats[gamemode] = {points = 0, wins = 0, losses = 0, kills = 0, deaths = 0, racesFinished = 0, bestPosition = 0, playtime = 0}
+    end
+
+    data.stats[gamemode].deaths = (data.stats[gamemode].deaths or 0) + 1
 
     return true
 end
 
--- Check points-related achievements
-function checkPointsAchievements(player)
-    local data = playerCache[player]
-    if not data then return end
+-- ============================================
+-- VIP & ADMIN FUNCTIONS
+-- ============================================
 
-    if data.totalPoints >= 10000 then
-        exports.jebiga_achievements:unlockAchievement(player, "points_10k")
-    end
-    if data.totalPoints >= 100000 then
-        exports.jebiga_achievements:unlockAchievement(player, "points_100k")
-    end
-end
-
--- Check win-related achievements
-function checkWinAchievements(player, gamemode)
-    local data = playerCache[player]
-    if not data or not data.stats then return end
-
-    local totalWins = 0
-    for _, stats in pairs(data.stats) do
-        totalWins = totalWins + (stats.wins or 0)
-    end
-
-    if totalWins >= 1 then
-        exports.jebiga_achievements:unlockAchievement(player, "first_win")
-    end
-    if totalWins >= 10 then
-        exports.jebiga_achievements:unlockAchievement(player, "win_10")
-    end
-    if totalWins >= 100 then
-        exports.jebiga_achievements:unlockAchievement(player, "win_100")
-    end
-    if totalWins >= 1000 then
-        exports.jebiga_achievements:unlockAchievement(player, "win_1000")
-    end
-end
-
--- Check kill-related achievements
-function checkKillAchievements(player)
-    local data = playerCache[player]
-    if not data or not data.stats then return end
-
-    local totalKills = 0
-    for _, stats in pairs(data.stats) do
-        totalKills = totalKills + (stats.kills or 0)
-    end
-
-    if totalKills >= 1 then
-        exports.jebiga_achievements:unlockAchievement(player, "first_kill")
-    end
-    if totalKills >= 100 then
-        exports.jebiga_achievements:unlockAchievement(player, "kill_100")
-    end
-    if totalKills >= 1000 then
-        exports.jebiga_achievements:unlockAchievement(player, "kill_1000")
-    end
-end
-
--- Get player rank
-function getPlayerRank(player)
-    local data = playerCache[player]
-    if not data then return nil end
-
-    return Utils.calculateRank(data.totalPoints)
-end
-
--- Check if player is VIP
 function isPlayerVIP(player)
     local data = playerCache[player]
-    if not data or data.vipLevel == 0 then return false end
+    if not data then
+        return (getElementData(player, "jebiga:vipLevel") or 0) > 0
+    end
+
+    if not data.vipLevel or data.vipLevel == 0 then return false end
 
     if data.vipExpires then
         local now = getRealTime().timestamp
-        return data.vipExpires > now
+        if type(data.vipExpires) == "number" then
+            return data.vipExpires > now
+        end
     end
 
     return data.vipLevel > 0
 end
 
--- Check if player is admin
 function isPlayerAdmin(player, minLevel)
     local data = playerCache[player]
-    if not data then return false end
+    if not data then
+        local adminLevel = getElementData(player, "jebiga:adminLevel") or 0
+        return adminLevel >= (minLevel or 1)
+    end
 
     minLevel = minLevel or 1
-    return data.adminLevel >= minLevel
+    return (data.adminLevel or 0) >= minLevel
 end
 
--- Get player admin level
 function getPlayerAdminLevel(player)
     local data = playerCache[player]
-    return data and data.adminLevel or 0
+    if data then
+        return data.adminLevel or 0
+    end
+    return getElementData(player, "jebiga:adminLevel") or 0
 end
 
--- Update player settings
+function getPlayerRank(player)
+    local data = playerCache[player]
+    if not data then return nil end
+
+    if Utils and Utils.calculateRank then
+        return Utils.calculateRank(data.totalPoints)
+    end
+
+    -- Default rank calculation
+    local points = data.totalPoints or 0
+    if points >= 100000 then return "Legend"
+    elseif points >= 50000 then return "Master"
+    elseif points >= 25000 then return "Expert"
+    elseif points >= 10000 then return "Veteran"
+    elseif points >= 5000 then return "Pro"
+    elseif points >= 1000 then return "Regular"
+    elseif points >= 100 then return "Rookie"
+    else return "Newcomer"
+    end
+end
+
+-- ============================================
+-- SETTINGS FUNCTIONS
+-- ============================================
+
 function updatePlayerSettings(player, settings)
     local data = playerCache[player]
     if not data then return false end
 
-    data.settings = Utils.mergeTables(data.settings or {}, settings)
+    if Utils and Utils.mergeTables then
+        data.settings = Utils.mergeTables(data.settings or {}, settings)
+    else
+        data.settings = data.settings or {}
+        for k, v in pairs(settings) do
+            data.settings[k] = v
+        end
+    end
 
     return true
 end
 
--- Get player settings
 function getPlayerSettings(player)
     local data = playerCache[player]
     return data and data.settings or {}
 end
+
+-- ============================================
+-- HELPER FUNCTIONS
+-- ============================================
+
+-- Safely call achievement functions
+function safeCallAchievements(player, funcName, ...)
+    local achievementsRes = getResourceFromName("jebiga_achievements")
+    if achievementsRes and getResourceState(achievementsRes) == "running" then
+        local func = exports.jebiga_achievements[funcName]
+        if func then
+            pcall(func, exports.jebiga_achievements, player, ...)
+        end
+    end
+end
+
+-- ============================================
+-- EVENT HANDLERS
+-- ============================================
 
 -- Clear player cache on disconnect
 addEventHandler("onPlayerQuit", root, function()
@@ -434,9 +492,42 @@ end)
 
 -- Periodic save (every 5 minutes)
 setTimer(function()
+    local savedCount = 0
     for player, _ in pairs(playerCache) do
         if isElement(player) then
             savePlayerData(player)
+            savedCount = savedCount + 1
+        else
+            playerCache[player] = nil
         end
     end
+    if savedCount > 0 then
+        outputDebugString("[Jebiga] Auto-saved " .. savedCount .. " player(s)")
+    end
 end, 300000, 0)
+
+-- ============================================
+-- EXPORTS
+-- ============================================
+
+-- Make functions globally accessible for other scripts in same resource
+_G.loadPlayerData = loadPlayerData
+_G.savePlayerData = savePlayerData
+_G.getCachedPlayerData = getCachedPlayerData
+_G.isPlayerDataLoaded = isPlayerDataLoaded
+_G.getPlayerMoney = getPlayerMoney
+_G.addPlayerMoney = addPlayerMoney
+_G.removePlayerMoney = removePlayerMoney
+_G.getPlayerPoints = getPlayerPoints
+_G.addPlayerPoints = addPlayerPoints
+_G.getPlayerStats = getPlayerStats
+_G.updatePlayerStats = updatePlayerStats
+_G.addPlayerWin = addPlayerWin
+_G.addPlayerKill = addPlayerKill
+_G.addPlayerDeath = addPlayerDeath
+_G.isPlayerVIP = isPlayerVIP
+_G.isPlayerAdmin = isPlayerAdmin
+_G.getPlayerAdminLevel = getPlayerAdminLevel
+_G.getPlayerRank = getPlayerRank
+_G.updatePlayerSettings = updatePlayerSettings
+_G.getPlayerSettings = getPlayerSettings

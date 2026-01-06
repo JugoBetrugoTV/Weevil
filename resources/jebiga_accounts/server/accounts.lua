@@ -1,6 +1,7 @@
 --[[
     Jebiga Multi-Gamemode - Account System
     Server-side account management (Register/Login)
+    Uses centralized MySQL database from jebiga_core
 ]]
 
 local loggedInPlayers = {}
@@ -8,12 +9,34 @@ local loginAttempts = {}
 local MAX_LOGIN_ATTEMPTS = 5
 local LOCKOUT_TIME = 300 -- 5 minutes
 
--- Initialize
+-- ============================================
+-- DATABASE HELPER FUNCTIONS
+-- ============================================
+
+local function dbQuery(query, ...)
+    return exports.jebiga_core:db_fetchAll(query, ...)
+end
+
+local function dbFetchOne(query, ...)
+    return exports.jebiga_core:db_fetchOne(query, ...)
+end
+
+local function dbExecute(query, ...)
+    return exports.jebiga_core:db_execute(query, ...)
+end
+
+-- ============================================
+-- INITIALIZATION
+-- ============================================
+
 addEventHandler("onResourceStart", resourceRoot, function()
     outputDebugString("[Jebiga Accounts] Account system initialized")
 end)
 
--- Register new account
+-- ============================================
+-- REGISTRATION
+-- ============================================
+
 function registerAccount(player, username, password, email)
     if not isElement(player) then return false, "Invalid player" end
 
@@ -37,17 +60,22 @@ function registerAccount(player, username, password, email)
     end
 
     -- Check if username exists
-    local checkQuery = dbQuery(exports.jebiga_core:dbQuery, [[
+    local existing = dbFetchOne([[
         SELECT id FROM accounts WHERE username = ?
     ]], username)
 
-    if checkQuery then
-        local result = dbPoll(checkQuery, -1)
-        dbFree(checkQuery)
+    if existing then
+        return false, "Username already exists"
+    end
 
-        if result and #result > 0 then
-            return false, "Username already exists"
-        end
+    -- Check if serial already has account
+    local serial = getPlayerSerial(player)
+    local serialCheck = dbFetchOne([[
+        SELECT id, username FROM accounts WHERE serial = ?
+    ]], serial)
+
+    if serialCheck then
+        return false, "You already have an account: " .. serialCheck.username
     end
 
     -- Hash password
@@ -57,17 +85,17 @@ function registerAccount(player, username, password, email)
     end
 
     -- Get player info
-    local serial = getPlayerSerial(player)
     local ip = getPlayerIP(player)
+    local startMoney = Config and Config.Currency and Config.Currency.startMoney or 5000
 
     -- Insert account
-    local insertQuery = dbExec(exports.jebiga_core:dbExec, [[
+    local success = dbExecute([[
         INSERT INTO accounts (username, password, email, serial, ip, money, created_at)
         VALUES (?, ?, ?, ?, ?, ?, NOW())
-    ]], username, hashedPassword, email or "", serial, ip, Config.Currency.startMoney)
+    ]], username, hashedPassword, email or "", serial, ip, startMoney)
 
-    if not insertQuery then
-        return false, "Database error"
+    if not success then
+        return false, "Database error - please try again"
     end
 
     outputDebugString("[Jebiga Accounts] New account registered: " .. username)
@@ -76,7 +104,10 @@ function registerAccount(player, username, password, email)
     return true, "Account created successfully! You can now login."
 end
 
--- Login to account
+-- ============================================
+-- LOGIN
+-- ============================================
+
 function loginAccount(player, username, password)
     if not isElement(player) then return false, "Invalid player" end
 
@@ -88,7 +119,7 @@ function loginAccount(player, username, password)
     -- Check login attempts
     local serial = getPlayerSerial(player)
     if isLockedOut(serial) then
-        local remaining = getLocoutRemaining(serial)
+        local remaining = getLockoutRemaining(serial)
         return false, "Too many login attempts. Try again in " .. math.ceil(remaining / 60) .. " minutes"
     end
 
@@ -102,23 +133,14 @@ function loginAccount(player, username, password)
     end
 
     -- Query account
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
+    local account = dbFetchOne([[
         SELECT * FROM accounts WHERE username = ?
     ]], username)
 
-    if not queryHandle then
-        return false, "Database error"
-    end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
-
-    if not result or #result == 0 then
+    if not account then
         recordLoginAttempt(serial, false)
         return false, "Invalid username or password"
     end
-
-    local account = result[1]
 
     -- Check ban status
     if account.banned == 1 then
@@ -128,23 +150,15 @@ function loginAccount(player, username, password)
         end
         if account.ban_expires then
             local now = getRealTime().timestamp
-            local banExpires = account.ban_expires
-            if banExpires and banExpires > now then
-                banInfo = banInfo .. " (Expires: " .. os.date("%Y-%m-%d %H:%M", banExpires) .. ")"
-            elseif not banExpires or banExpires == 0 then
-                banInfo = banInfo .. " (Permanent)"
+            -- Check if ban expired
+            if account.ban_expires ~= 0 then
+                -- Has expiry time
+                banInfo = banInfo .. " (Expires: " .. tostring(account.ban_expires) .. ")"
             else
-                -- Ban expired, remove it
-                dbExec(exports.jebiga_core:dbExec, [[
-                    UPDATE accounts SET banned = 0, ban_reason = NULL, ban_expires = NULL WHERE id = ?
-                ]], account.id)
-                -- Continue with login
-                account.banned = 0
+                banInfo = banInfo .. " (Permanent)"
             end
         end
-        if account.banned == 1 then
-            return false, banInfo
-        end
+        return false, banInfo
     end
 
     -- Verify password
@@ -160,7 +174,7 @@ function loginAccount(player, username, password)
 
     -- Update account info
     local ip = getPlayerIP(player)
-    dbExec(exports.jebiga_core:dbExec, [[
+    dbExecute([[
         UPDATE accounts SET serial = ?, ip = ?, last_login = NOW() WHERE id = ?
     ]], serial, ip, account.id)
 
@@ -171,22 +185,39 @@ function loginAccount(player, username, password)
         loginTime = getTickCount()
     }
 
-    -- Update core player data
-    exports.jebiga_core:setPlayerData(player, "accountId", account.id)
-    exports.jebiga_core:setPlayerData(player, "loggedIn", true)
+    -- Set element data
+    setElementData(player, "jebiga:accountId", account.id)
+    setElementData(player, "jebiga:loggedIn", true)
+    setElementData(player, "jebiga:username", account.username)
 
-    -- Load player data
-    loadPlayerData(player, account.id)
+    -- Load player data via core
+    local coreRes = getResourceFromName("jebiga_core")
+    if coreRes and getResourceState(coreRes) == "running" then
+        exports.jebiga_core:loadPlayerData(player, account.id)
+    end
 
     -- Set player name
     setPlayerName(player, account.username)
+
+    -- Send success to client
+    triggerClientEvent(player, "jebiga:account:loginSuccess", player, {
+        accountId = account.id,
+        username = account.username,
+        adminLevel = account.admin_level or 0,
+        vipLevel = account.vip_level or 0,
+        money = account.money or 0,
+        totalPoints = account.total_points or 0
+    })
 
     outputDebugString("[Jebiga Accounts] Player logged in: " .. username)
 
     return true, "Welcome back, " .. username .. "!"
 end
 
--- Logout from account
+-- ============================================
+-- LOGOUT
+-- ============================================
+
 function logoutAccount(player)
     if not isElement(player) then return false end
 
@@ -200,30 +231,32 @@ function logoutAccount(player)
     -- Clear login state
     loggedInPlayers[player] = nil
 
-    -- Update core
-    exports.jebiga_core:setPlayerData(player, "accountId", nil)
-    exports.jebiga_core:setPlayerData(player, "loggedIn", false)
+    -- Clear element data
+    setElementData(player, "jebiga:accountId", nil)
+    setElementData(player, "jebiga:loggedIn", false)
+    setElementData(player, "jebiga:username", nil)
 
     -- Reset player name
     setPlayerName(player, "Guest_" .. math.random(1000, 9999))
 
-    -- Return to lobby
-    exports.jebiga_core:teleportToLobby(player)
+    -- Trigger client event
+    triggerClientEvent(player, "jebiga:account:logout", player)
 
     return true, "Logged out successfully"
 end
 
--- Check if player is logged in
+-- ============================================
+-- HELPER FUNCTIONS
+-- ============================================
+
 function isLoggedIn(player)
     return loggedInPlayers[player] ~= nil
 end
 
--- Get account data
 function getAccountData(player)
     return loggedInPlayers[player]
 end
 
--- Set account data
 function setAccountData(player, key, value)
     if loggedInPlayers[player] then
         loggedInPlayers[player][key] = value
@@ -241,6 +274,8 @@ end
 
 -- Verify password
 function verifyPassword(password, storedHash)
+    if not storedHash then return false end
+
     local parts = split(storedHash, ":")
     if #parts ~= 2 then
         -- Legacy MD5 hash
@@ -261,7 +296,10 @@ function split(str, delimiter)
     return result
 end
 
--- Login attempt tracking
+-- ============================================
+-- LOGIN ATTEMPT TRACKING
+-- ============================================
+
 function recordLoginAttempt(serial, success)
     if success then
         loginAttempts[serial] = nil
@@ -292,30 +330,25 @@ function isLockedOut(serial)
     return true
 end
 
-function getLocoutRemaining(serial)
+function getLockoutRemaining(serial)
     if not loginAttempts[serial] then return 0 end
     local elapsed = (getTickCount() - loginAttempts[serial].lastAttempt) / 1000
-    return LOCKOUT_TIME - elapsed
+    return math.max(0, LOCKOUT_TIME - elapsed)
 end
 
--- Load player data after login
+-- ============================================
+-- PLAYER DATA
+-- ============================================
+
 function loadPlayerData(player, accountId)
-    -- Query full account data
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
+    local account = dbFetchOne([[
         SELECT * FROM accounts WHERE id = ?
     ]], accountId)
 
-    if not queryHandle then return end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
-
-    if not result or #result == 0 then return end
-
-    local account = result[1]
+    if not account then return end
 
     -- Send data to client
-    triggerClientEvent(player, Events.Account.DATA_UPDATE, player, {
+    triggerClientEvent(player, "jebiga:account:dataUpdate", player, {
         accountId = account.id,
         username = account.username,
         adminLevel = account.admin_level or 0,
@@ -324,12 +357,8 @@ function loadPlayerData(player, accountId)
         totalPoints = account.total_points or 0,
         playtime = account.playtime or 0
     })
-
-    -- Load into player manager
-    exports.jebiga_core:loadPlayerData(player, accountId)
 end
 
--- Save player data on logout/disconnect
 function savePlayerData(player)
     local accountData = loggedInPlayers[player]
     if not accountData then return end
@@ -338,71 +367,31 @@ function savePlayerData(player)
     local sessionTime = math.floor((getTickCount() - accountData.loginTime) / 1000)
 
     -- Update playtime
-    dbExec(exports.jebiga_core:dbExec, [[
+    dbExecute([[
         UPDATE accounts SET playtime = playtime + ? WHERE id = ?
     ]], sessionTime, accountData.accountId)
 
-    -- Save via player manager
-    exports.jebiga_core:savePlayerData(player)
+    -- Save via player manager if available
+    local coreRes = getResourceFromName("jebiga_core")
+    if coreRes and getResourceState(coreRes) == "running" then
+        pcall(function()
+            exports.jebiga_core:savePlayerData(player)
+        end)
+    end
 end
 
--- Event handlers
-addEvent(Events.Account.REQUEST_LOGIN, true)
-addEventHandler(Events.Account.REQUEST_LOGIN, root, function(username, password)
-    local success, message = loginAccount(client, username, password)
+-- ============================================
+-- AUTO-LOGIN
+-- ============================================
 
-    if success then
-        triggerClientEvent(client, Events.Account.LOGIN_SUCCESS, client, message)
-    else
-        triggerClientEvent(client, Events.Account.LOGIN_FAILED, client, message)
-    end
-end)
-
-addEvent(Events.Account.REQUEST_REGISTER, true)
-addEventHandler(Events.Account.REQUEST_REGISTER, root, function(username, password, email)
-    local success, message = registerAccount(client, username, password, email)
-
-    if success then
-        triggerClientEvent(client, Events.Account.REGISTER_SUCCESS, client, message)
-    else
-        triggerClientEvent(client, Events.Account.REGISTER_FAILED, client, message)
-    end
-end)
-
-addEvent(Events.Account.REQUEST_LOGOUT, true)
-addEventHandler(Events.Account.REQUEST_LOGOUT, root, function()
-    local success, message = logoutAccount(client)
-
-    if success then
-        triggerClientEvent(client, Events.Account.LOGOUT, client, message)
-    end
-end)
-
--- Handle player disconnect
-addEventHandler("onPlayerQuit", root, function()
-    if loggedInPlayers[source] then
-        savePlayerData(source)
-        loggedInPlayers[source] = nil
-    end
-end)
-
--- Auto-login by serial (optional feature)
 function autoLoginBySerial(player)
     local serial = getPlayerSerial(player)
 
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
+    local account = dbFetchOne([[
         SELECT id, username FROM accounts WHERE serial = ? AND banned = 0
     ]], serial)
 
-    if not queryHandle then return false end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
-
-    if result and #result == 1 then
-        -- Found exactly one account with this serial
-        local account = result[1]
-
+    if account then
         -- Set logged in
         loggedInPlayers[player] = {
             accountId = account.id,
@@ -410,11 +399,17 @@ function autoLoginBySerial(player)
             loginTime = getTickCount()
         }
 
-        exports.jebiga_core:setPlayerData(player, "accountId", account.id)
-        exports.jebiga_core:setPlayerData(player, "loggedIn", true)
+        setElementData(player, "jebiga:accountId", account.id)
+        setElementData(player, "jebiga:loggedIn", true)
+        setElementData(player, "jebiga:username", account.username)
 
         setPlayerName(player, account.username)
-        loadPlayerData(player, account.id)
+
+        -- Load player data
+        local coreRes = getResourceFromName("jebiga_core")
+        if coreRes and getResourceState(coreRes) == "running" then
+            exports.jebiga_core:loadPlayerData(player, account.id)
+        end
 
         outputChatBox("#00FF00[Jebiga] #FFFFFFAuto-login: Welcome back, " .. account.username .. "!", player, 255, 255, 255, true)
 
@@ -424,24 +419,71 @@ function autoLoginBySerial(player)
     return false
 end
 
--- Guest mode (play without account)
 function enableGuestMode(player)
     local guestName = "Guest_" .. math.random(10000, 99999)
     setPlayerName(player, guestName)
+    setElementData(player, "jebiga:loggedIn", false)
 
     outputChatBox("#FFFF00[Jebiga] #FFFFFFPlaying as guest. Your progress won't be saved.", player, 255, 255, 255, true)
     outputChatBox("#FFFF00[Jebiga] #FFFFFFUse /register to create an account.", player, 255, 255, 255, true)
 end
 
--- Commands
+-- ============================================
+-- EVENT HANDLERS
+-- ============================================
+
+addEvent("jebiga:account:requestLogin", true)
+addEventHandler("jebiga:account:requestLogin", root, function(username, password)
+    local success, message = loginAccount(client, username, password)
+
+    if success then
+        triggerClientEvent(client, "jebiga:account:loginSuccess", client, message)
+    else
+        triggerClientEvent(client, "jebiga:account:loginFailed", client, message)
+    end
+end)
+
+addEvent("jebiga:account:requestRegister", true)
+addEventHandler("jebiga:account:requestRegister", root, function(username, password, email)
+    local success, message = registerAccount(client, username, password, email)
+
+    if success then
+        triggerClientEvent(client, "jebiga:account:registerSuccess", client, message)
+    else
+        triggerClientEvent(client, "jebiga:account:registerFailed", client, message)
+    end
+end)
+
+addEvent("jebiga:account:requestLogout", true)
+addEventHandler("jebiga:account:requestLogout", root, function()
+    local success, message = logoutAccount(client)
+
+    if success then
+        triggerClientEvent(client, "jebiga:account:logout", client, message)
+    end
+end)
+
+-- Handle player disconnect
+addEventHandler("onPlayerQuit", root, function()
+    if loggedInPlayers[source] then
+        savePlayerData(source)
+        loggedInPlayers[source] = nil
+    end
+    loginAttempts[getPlayerSerial(source)] = nil
+end)
+
+-- ============================================
+-- COMMANDS
+-- ============================================
+
 addCommandHandler("register", function(player, cmd, username, password, email)
     if isLoggedIn(player) then
-        outputChatBox("You are already logged in. Use /logout first.", player, 255, 0, 0)
+        outputChatBox("#FF0000[Jebiga] #FFFFFFYou are already logged in. Use /logout first.", player, 255, 255, 255, true)
         return
     end
 
     if not username or not password then
-        outputChatBox("Usage: /register [username] [password] [email]", player, 255, 200, 0)
+        outputChatBox("#FFFF00[Jebiga] #FFFFFFUsage: /register [username] [password] [email]", player, 255, 255, 255, true)
         return
     end
 
@@ -455,12 +497,12 @@ end)
 
 addCommandHandler("login", function(player, cmd, username, password)
     if isLoggedIn(player) then
-        outputChatBox("You are already logged in.", player, 255, 0, 0)
+        outputChatBox("#FF0000[Jebiga] #FFFFFFYou are already logged in.", player, 255, 255, 255, true)
         return
     end
 
     if not username or not password then
-        outputChatBox("Usage: /login [username] [password]", player, 255, 200, 0)
+        outputChatBox("#FFFF00[Jebiga] #FFFFFFUsage: /login [username] [password]", player, 255, 255, 255, true)
         return
     end
 
@@ -474,7 +516,7 @@ end)
 
 addCommandHandler("logout", function(player)
     if not isLoggedIn(player) then
-        outputChatBox("You are not logged in.", player, 255, 0, 0)
+        outputChatBox("#FF0000[Jebiga] #FFFFFFYou are not logged in.", player, 255, 255, 255, true)
         return
     end
 
@@ -484,56 +526,52 @@ end)
 
 addCommandHandler("changepass", function(player, cmd, oldPass, newPass)
     if not isLoggedIn(player) then
-        outputChatBox("You must be logged in to change your password.", player, 255, 0, 0)
+        outputChatBox("#FF0000[Jebiga] #FFFFFFYou must be logged in to change your password.", player, 255, 255, 255, true)
         return
     end
 
     if not oldPass or not newPass then
-        outputChatBox("Usage: /changepass [old password] [new password]", player, 255, 200, 0)
+        outputChatBox("#FFFF00[Jebiga] #FFFFFFUsage: /changepass [old password] [new password]", player, 255, 255, 255, true)
         return
     end
 
     if #newPass < 6 then
-        outputChatBox("New password must be at least 6 characters.", player, 255, 0, 0)
+        outputChatBox("#FF0000[Jebiga] #FFFFFFNew password must be at least 6 characters.", player, 255, 255, 255, true)
         return
     end
 
     local accountData = loggedInPlayers[player]
 
     -- Verify old password
-    local queryHandle = dbQuery(exports.jebiga_core:dbQuery, [[
+    local account = dbFetchOne([[
         SELECT password FROM accounts WHERE id = ?
     ]], accountData.accountId)
 
-    if not queryHandle then
-        outputChatBox("Database error.", player, 255, 0, 0)
+    if not account then
+        outputChatBox("#FF0000[Jebiga] #FFFFFFAccount not found.", player, 255, 255, 255, true)
         return
     end
 
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
-
-    if not result or #result == 0 then
-        outputChatBox("Account not found.", player, 255, 0, 0)
-        return
-    end
-
-    if not verifyPassword(oldPass, result[1].password) then
-        outputChatBox("Incorrect current password.", player, 255, 0, 0)
+    if not verifyPassword(oldPass, account.password) then
+        outputChatBox("#FF0000[Jebiga] #FFFFFFIncorrect current password.", player, 255, 255, 255, true)
         return
     end
 
     -- Update password
     local newHash = hashPassword(newPass)
-    dbExec(exports.jebiga_core:dbExec, [[
+    dbExecute([[
         UPDATE accounts SET password = ? WHERE id = ?
     ]], newHash, accountData.accountId)
 
     outputChatBox("#00FF00[Jebiga] #FFFFFFPassword changed successfully!", player, 255, 255, 255, true)
 end)
 
--- Export functions
-exports.jebiga_accounts = exports.jebiga_accounts or {}
-exports.jebiga_accounts.isLoggedIn = isLoggedIn
-exports.jebiga_accounts.getAccountData = getAccountData
-exports.jebiga_accounts.setAccountData = setAccountData
+-- ============================================
+-- EXPORTS
+-- ============================================
+
+_G.isLoggedIn = isLoggedIn
+_G.getAccountData = getAccountData
+_G.setAccountData = setAccountData
+_G.autoLoginBySerial = autoLoginBySerial
+_G.enableGuestMode = enableGuestMode

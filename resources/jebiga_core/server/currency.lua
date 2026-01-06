@@ -1,6 +1,7 @@
 --[[
     Jebiga Multi-Gamemode - Currency System
     Handles money and points transactions
+    Uses database functions from database.lua
 ]]
 
 -- Currency types
@@ -24,16 +25,26 @@ local REASONS = {
     CLAN = "Clan Transaction"
 }
 
+-- ============================================
+-- MONEY FUNCTIONS
+-- ============================================
+
 -- Give money to player with validation
 function giveMoney(player, amount, reason)
     if not isElement(player) then return false, "Invalid player" end
     if type(amount) ~= "number" or amount <= 0 then return false, "Invalid amount" end
 
+    -- Check if player is logged in
+    local accountId = getElementData(player, "jebiga:accountId")
+    if not accountId then
+        return false, "Player not logged in"
+    end
+
     local success = addPlayerMoney(player, math.floor(amount), reason or REASONS.ADMIN)
 
     if success then
         -- Show notification
-        triggerClientEvent(player, Events.Currency.REWARD_RECEIVED, player, {
+        triggerClientEvent(player, "jebiga:currency:reward", player, {
             type = CURRENCY_MONEY,
             amount = amount,
             reason = reason
@@ -56,6 +67,10 @@ function takeMoney(player, amount, reason)
     return removePlayerMoney(player, math.floor(amount), reason or REASONS.PURCHASE)
 end
 
+-- ============================================
+-- POINTS FUNCTIONS
+-- ============================================
+
 -- Give points to player
 function givePoints(player, amount, gamemode, reason)
     if not isElement(player) then return false, "Invalid player" end
@@ -65,7 +80,7 @@ function givePoints(player, amount, gamemode, reason)
 
     if success then
         -- Show notification
-        triggerClientEvent(player, Events.Currency.REWARD_RECEIVED, player, {
+        triggerClientEvent(player, "jebiga:currency:reward", player, {
             type = CURRENCY_POINTS,
             amount = amount,
             gamemode = gamemode,
@@ -75,6 +90,10 @@ function givePoints(player, amount, gamemode, reason)
 
     return success
 end
+
+-- ============================================
+-- TRANSFER FUNCTIONS
+-- ============================================
 
 -- Transfer money between players
 function transferMoney(fromPlayer, toPlayer, amount)
@@ -88,6 +107,18 @@ function transferMoney(fromPlayer, toPlayer, amount)
 
     if type(amount) ~= "number" or amount <= 0 then
         return false, "Invalid amount"
+    end
+
+    -- Check if both are logged in
+    local fromAccount = getElementData(fromPlayer, "jebiga:accountId")
+    local toAccount = getElementData(toPlayer, "jebiga:accountId")
+
+    if not fromAccount then
+        return false, "You must be logged in"
+    end
+
+    if not toAccount then
+        return false, "Target player must be logged in"
     end
 
     local fromMoney = getPlayerMoney(fromPlayer)
@@ -109,18 +140,37 @@ function transferMoney(fromPlayer, toPlayer, amount)
         return false, "Transfer failed"
     end
 
-    outputChatBox("#00FF00[Transfer] #FFFFFFYou sent $" .. Utils.formatNumber(amount) .. " to " .. getPlayerName(toPlayer), fromPlayer, 255, 255, 255, true)
-    outputChatBox("#00FF00[Transfer] #FFFFFFYou received $" .. Utils.formatNumber(amount) .. " from " .. getPlayerName(fromPlayer), toPlayer, 255, 255, 255, true)
+    -- Format number helper
+    local function formatNumber(num)
+        if Utils and Utils.formatNumber then
+            return Utils.formatNumber(num)
+        end
+        local formatted = tostring(num)
+        local k
+        while true do
+            formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
+            if k == 0 then break end
+        end
+        return formatted
+    end
+
+    outputChatBox("#00FF00[Transfer] #FFFFFFYou sent $" .. formatNumber(amount) .. " to " .. getPlayerName(toPlayer), fromPlayer, 255, 255, 255, true)
+    outputChatBox("#00FF00[Transfer] #FFFFFFYou received $" .. formatNumber(amount) .. " from " .. getPlayerName(fromPlayer), toPlayer, 255, 255, 255, true)
 
     return true
 end
 
--- Award daily bonus
+-- ============================================
+-- DAILY BONUS
+-- ============================================
+
 function awardDailyBonus(player)
     local data = getCachedPlayerData(player)
-    if not data then return false end
+    if not data then
+        return false, "You must be logged in"
+    end
 
-    local lastDaily = getElementData(player, "lastDailyBonus") or 0
+    local lastDaily = getElementData(player, "jebiga:lastDailyBonus") or 0
     local now = getRealTime().timestamp
     local dayInSeconds = 86400
 
@@ -132,7 +182,7 @@ function awardDailyBonus(player)
     end
 
     -- Calculate streak bonus
-    local streak = (getElementData(player, "dailyStreak") or 0) + 1
+    local streak = (getElementData(player, "jebiga:dailyStreak") or 0) + 1
     if now - lastDaily > dayInSeconds * 2 then
         streak = 1 -- Reset streak if missed a day
     end
@@ -142,100 +192,102 @@ function awardDailyBonus(player)
     local totalBonus = baseBonus + streakBonus
 
     -- VIP bonus
-    if isPlayerVIP(player) then
-        totalBonus = math.floor(totalBonus * Config.VIP.bonusMultiplier)
+    if isPlayerVIP and isPlayerVIP(player) then
+        local multiplier = Config and Config.VIP and Config.VIP.bonusMultiplier or 1.5
+        totalBonus = math.floor(totalBonus * multiplier)
     end
 
     giveMoney(player, totalBonus, REASONS.DAILY)
     givePoints(player, math.floor(totalBonus / 10), nil, REASONS.DAILY)
 
-    setElementData(player, "lastDailyBonus", now)
-    setElementData(player, "dailyStreak", streak)
+    setElementData(player, "jebiga:lastDailyBonus", now)
+    setElementData(player, "jebiga:dailyStreak", streak)
 
-    outputChatBox("#FFFF00[Daily Bonus] #FFFFFFYou received $" .. Utils.formatNumber(totalBonus) .. "! (Streak: " .. streak .. " days)", player, 255, 255, 255, true)
+    -- Format number helper
+    local function formatNumber(num)
+        if Utils and Utils.formatNumber then
+            return Utils.formatNumber(num)
+        end
+        return tostring(num)
+    end
+
+    outputChatBox("#FFFF00[Daily Bonus] #FFFFFFYou received $" .. formatNumber(totalBonus) .. "! (Streak: " .. streak .. " days)", player, 255, 255, 255, true)
 
     return true, totalBonus
 end
 
--- Get leaderboard (top players by points)
+-- ============================================
+-- LEADERBOARDS
+-- ============================================
+
 function getPointsLeaderboard(limit, gamemode)
     limit = limit or 10
 
-    local query
+    local result
     if gamemode then
-        query = [[
+        result = fetchAll([[
             SELECT a.username, ps.points
             FROM player_stats ps
             JOIN accounts a ON ps.account_id = a.id
             WHERE ps.gamemode = ?
             ORDER BY ps.points DESC
             LIMIT ?
-        ]]
+        ]], gamemode, limit)
     else
-        query = [[
+        result = fetchAll([[
             SELECT username, total_points as points
             FROM accounts
             ORDER BY total_points DESC
             LIMIT ?
-        ]]
+        ]], limit)
     end
-
-    local queryHandle
-    if gamemode then
-        queryHandle = dbQuery(connection, query, gamemode, limit)
-    else
-        queryHandle = dbQuery(connection, query, limit)
-    end
-
-    if not queryHandle then return {} end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
 
     return result or {}
 end
 
--- Get money leaderboard
 function getMoneyLeaderboard(limit)
     limit = limit or 10
 
-    local queryHandle = dbQuery(connection, [[
+    local result = fetchAll([[
         SELECT username, money
         FROM accounts
         ORDER BY money DESC
         LIMIT ?
     ]], limit)
 
-    if not queryHandle then return {} end
-
-    local result = dbPoll(queryHandle, -1)
-    dbFree(queryHandle)
-
     return result or {}
 end
 
--- Commands
+-- ============================================
+-- COMMANDS
+-- ============================================
+
 addCommandHandler("pay", function(player, cmd, targetName, amountStr)
     if not targetName or not amountStr then
-        outputChatBox("Usage: /pay [player] [amount]", player, 255, 200, 0)
+        outputChatBox("#FFFF00[Jebiga] #FFFFFFUsage: /pay [player] [amount]", player, 255, 255, 255, true)
         return
     end
 
     local target = getPlayerFromPartialName(targetName)
     if not target then
-        outputChatBox("Player not found.", player, 255, 0, 0)
+        outputChatBox("#FF0000[Jebiga] #FFFFFFPlayer not found.", player, 255, 255, 255, true)
         return
     end
 
     local amount = tonumber(amountStr)
     if not amount or amount <= 0 then
-        outputChatBox("Invalid amount.", player, 255, 0, 0)
+        outputChatBox("#FF0000[Jebiga] #FFFFFFInvalid amount.", player, 255, 255, 255, true)
+        return
+    end
+
+    if amount > 1000000 then
+        outputChatBox("#FF0000[Jebiga] #FFFFFFMaximum transfer is $1,000,000.", player, 255, 255, 255, true)
         return
     end
 
     local success, err = transferMoney(player, target, amount)
     if not success then
-        outputChatBox("Transfer failed: " .. (err or "Unknown error"), player, 255, 0, 0)
+        outputChatBox("#FF0000[Jebiga] #FFFFFF" .. (err or "Transfer failed"), player, 255, 255, 255, true)
     end
 end)
 
@@ -249,29 +301,58 @@ end)
 addCommandHandler("balance", function(player)
     local money = getPlayerMoney(player)
     local points = getPlayerPoints(player)
-    outputChatBox("#FFFF00[Balance] #FFFFFFMoney: $" .. Utils.formatNumber(money) .. " | Points: " .. Utils.formatNumber(points), player, 255, 255, 255, true)
+
+    local function formatNumber(num)
+        if Utils and Utils.formatNumber then
+            return Utils.formatNumber(num)
+        end
+        local formatted = tostring(num)
+        local k
+        while true do
+            formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
+            if k == 0 then break end
+        end
+        return formatted
+    end
+
+    outputChatBox("#FFFF00[Balance] #FFFFFFMoney: $" .. formatNumber(money) .. " | Points: " .. formatNumber(points), player, 255, 255, 255, true)
 end)
 
 addCommandHandler("top", function(player, cmd, typeArg)
-    local leaderboard
+    local function formatNumber(num)
+        if Utils and Utils.formatNumber then
+            return Utils.formatNumber(num)
+        end
+        local formatted = tostring(num)
+        local k
+        while true do
+            formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
+            if k == 0 then break end
+        end
+        return formatted
+    end
 
     if typeArg == "money" then
-        leaderboard = getMoneyLeaderboard(10)
-        outputChatBox("#FFFF00=== Top 10 Richest Players ===", player, 255, 255, 255, true)
+        local leaderboard = getMoneyLeaderboard(10)
+        outputChatBox("#FFFF00═══ Top 10 Richest Players ═══", player, 255, 255, 255, true)
         for i, entry in ipairs(leaderboard) do
-            outputChatBox("#FFFFFF" .. i .. ". " .. entry.username .. " - $" .. Utils.formatNumber(entry.money), player, 255, 255, 255, true)
+            local color = i <= 3 and "#FFD700" or "#FFFFFF"
+            outputChatBox(color .. i .. ". " .. entry.username .. " - $" .. formatNumber(entry.money), player, 255, 255, 255, true)
         end
     else
-        leaderboard = getPointsLeaderboard(10, typeArg)
-        outputChatBox("#FFFF00=== Top 10 Players" .. (typeArg and (" (" .. typeArg .. ")") or "") .. " ===", player, 255, 255, 255, true)
+        local leaderboard = getPointsLeaderboard(10, typeArg)
+        local title = typeArg and ("Top 10 - " .. typeArg:upper()) or "Top 10 Overall"
+        outputChatBox("#FFFF00═══ " .. title .. " ═══", player, 255, 255, 255, true)
         for i, entry in ipairs(leaderboard) do
-            outputChatBox("#FFFFFF" .. i .. ". " .. entry.username .. " - " .. Utils.formatNumber(entry.points) .. " pts", player, 255, 255, 255, true)
+            local color = i <= 3 and "#FFD700" or "#FFFFFF"
+            outputChatBox(color .. i .. ". " .. entry.username .. " - " .. formatNumber(entry.points) .. " pts", player, 255, 255, 255, true)
         end
     end
 end)
 
 -- Helper function to get player from partial name
 function getPlayerFromPartialName(name)
+    if not name then return nil end
     name = name:lower()
     for _, player in ipairs(getElementsByType("player")) do
         if getPlayerName(player):lower():find(name, 1, true) then
@@ -281,7 +362,10 @@ function getPlayerFromPartialName(name)
     return nil
 end
 
--- Export functions
+-- ============================================
+-- EXPORTS
+-- ============================================
+
 _G.giveMoney = giveMoney
 _G.takeMoney = takeMoney
 _G.givePoints = givePoints
@@ -289,3 +373,5 @@ _G.transferMoney = transferMoney
 _G.awardDailyBonus = awardDailyBonus
 _G.getPointsLeaderboard = getPointsLeaderboard
 _G.getMoneyLeaderboard = getMoneyLeaderboard
+_G.getPlayerFromPartialName = getPlayerFromPartialName
+_G.TRANSACTION_REASONS = REASONS

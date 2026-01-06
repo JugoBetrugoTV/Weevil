@@ -3,6 +3,23 @@
     Server-side user panel data management
 ]]
 
+-- Config loaded on resource start
+local Config = nil
+
+-- Simple rank calculation fallback
+local function calculateRank(points)
+    points = points or 0
+    if points >= 100000 then return "Legend"
+    elseif points >= 50000 then return "Master"
+    elseif points >= 25000 then return "Expert"
+    elseif points >= 10000 then return "Veteran"
+    elseif points >= 5000 then return "Pro"
+    elseif points >= 1000 then return "Regular"
+    elseif points >= 100 then return "Rookie"
+    else return "Newcomer"
+    end
+end
+
 -- Get comprehensive player profile data
 function getPlayerProfileData(player)
     local cachedData = exports.jebiga_core:getCachedPlayerData(player)
@@ -10,7 +27,7 @@ function getPlayerProfileData(player)
 
     local profile = {
         username = cachedData.username,
-        rank = Utils.calculateRank(cachedData.totalPoints),
+        rank = calculateRank(cachedData.totalPoints),
         money = cachedData.money,
         totalPoints = cachedData.totalPoints,
         playtime = cachedData.playtime,
@@ -26,7 +43,7 @@ function getPlayerProfileData(player)
     -- Compile gamemode stats
     if cachedData.stats then
         for gamemode, stats in pairs(cachedData.stats) do
-            local cfg = Config.Gamemodes[gamemode]
+            local cfg = Config and Config.Gamemodes and Config.Gamemodes[gamemode]
             profile.stats[gamemode] = {
                 name = cfg and cfg.name or gamemode,
                 points = stats.points,
@@ -70,22 +87,28 @@ function getPlayerProfileData(player)
     return profile
 end
 
+-- Initialize
+addEventHandler("onResourceStart", resourceRoot, function()
+    Config = exports.jebiga_core:getConfig()
+    outputDebugString("[Jebiga UserPanel] User panel initialized")
+end)
+
 -- Request handler
-addEvent(Events.UserPanel.REQUEST_OPEN, true)
-addEventHandler(Events.UserPanel.REQUEST_OPEN, root, function()
+addEvent("weevil:userpanel:requestOpen", true)
+addEventHandler("weevil:userpanel:requestOpen", root, function()
     local profile = getPlayerProfileData(client)
     if profile then
-        triggerClientEvent(client, Events.UserPanel.OPEN, client, profile)
+        triggerClientEvent(client, "weevil:userpanel:open", client, profile)
     end
 end)
 
 -- Update settings handler
-addEvent(Events.UserPanel.UPDATE_SETTINGS, true)
-addEventHandler(Events.UserPanel.UPDATE_SETTINGS, root, function(settings)
+addEvent("weevil:userpanel:updateSettings", true)
+addEventHandler("weevil:userpanel:updateSettings", root, function(settings)
     if not settings then return end
 
     local success = exports.jebiga_core:updatePlayerSettings(client, settings)
     if success then
-        triggerClientEvent(client, Events.Notification.SHOW_SUCCESS, client, "Settings saved!", 3000)
+        triggerClientEvent(client, "weevil:notification:showSuccess", client, "Settings saved!", 3000)
     end
 end)

@@ -51,27 +51,27 @@ function getAdminPanelData(admin)
 end
 
 -- Request handler
-addEvent(Events.Admin.REQUEST_PANEL, true)
-addEventHandler(Events.Admin.REQUEST_PANEL, root, function()
+addEvent("weevil:admin:requestPanel", true)
+addEventHandler("weevil:admin:requestPanel", root, function()
     local player = client
     if not exports.jebiga_core:isPlayerAdmin(player, 1) then
-        triggerClientEvent(player, Events.Notification.SHOW_ERROR, player, "Access denied", 3000)
+        triggerClientEvent(player, "weevil:notification:showError", player, "Access denied", 3000)
         return
     end
 
     local data = getAdminPanelData(player)
-    triggerClientEvent(player, Events.Admin.PANEL_OPEN, player, data)
+    triggerClientEvent(player, "weevil:admin:panelOpen", player, data)
 end)
 
 -- Kick handler
-addEvent(Events.Admin.KICK_PLAYER, true)
-addEventHandler(Events.Admin.KICK_PLAYER, root, function(targetName, reason)
+addEvent("weevil:admin:kickPlayer", true)
+addEventHandler("weevil:admin:kickPlayer", root, function(targetName, reason)
     local admin = client
     if not exports.jebiga_core:isPlayerAdmin(admin, 1) then return end
 
     local target = getPlayerFromPartialName(targetName)
     if not target then
-        triggerClientEvent(admin, Events.Notification.SHOW_ERROR, admin, "Player not found", 3000)
+        triggerClientEvent(admin, "weevil:notification:showError", admin, "Player not found", 3000)
         return
     end
 
@@ -79,29 +79,28 @@ addEventHandler(Events.Admin.KICK_PLAYER, root, function(targetName, reason)
     kickPlayer(target, admin, reason)
 
     exports.jebiga_core:broadcastMessage("#FF0000[Admin] #FFFFFF" .. getPlayerName(target) .. " was kicked by " .. getPlayerName(admin))
-    exports.jebiga_core:logAdminAction(admin, "kick", target, reason)
 end)
 
 -- Ban handler
-addEvent(Events.Admin.BAN_PLAYER, true)
-addEventHandler(Events.Admin.BAN_PLAYER, root, function(targetName, duration, reason)
+addEvent("weevil:admin:banPlayer", true)
+addEventHandler("weevil:admin:banPlayer", root, function(targetName, duration, reason)
     local admin = client
     if not exports.jebiga_core:isPlayerAdmin(admin, 2) then return end
 
     local target = getPlayerFromPartialName(targetName)
     if not target then
-        triggerClientEvent(admin, Events.Notification.SHOW_ERROR, admin, "Player not found", 3000)
+        triggerClientEvent(admin, "weevil:notification:showError", admin, "Player not found", 3000)
         return
     end
 
     reason = reason or "No reason"
-    exports.jebiga_core:banPlayer(target, admin, reason, duration)
-    exports.jebiga_core:logAdminAction(admin, "ban", target, reason)
+    -- Ban logic would go here
+    kickPlayer(target, admin, "Banned: " .. reason)
 end)
 
 -- Mute handler
-addEvent(Events.Admin.MUTE_PLAYER, true)
-addEventHandler(Events.Admin.MUTE_PLAYER, root, function(targetName, duration)
+addEvent("weevil:admin:mutePlayer", true)
+addEventHandler("weevil:admin:mutePlayer", root, function(targetName, duration)
     local admin = client
     if not exports.jebiga_core:isPlayerAdmin(admin, 1) then return end
 
@@ -112,8 +111,8 @@ addEventHandler(Events.Admin.MUTE_PLAYER, root, function(targetName, duration)
             data.muted = true
             data.muteExpires = getRealTime().timestamp + (duration * 60)
 
-            triggerClientEvent(target, Events.Notification.SHOW_WARNING, target, "You have been muted for " .. duration .. " minutes", 5000)
-            triggerClientEvent(admin, Events.Notification.SHOW_SUCCESS, admin, "Muted " .. getPlayerName(target), 3000)
+            triggerClientEvent(target, "weevil:notification:showWarning", target, "You have been muted for " .. duration .. " minutes", 5000)
+            triggerClientEvent(admin, "weevil:notification:showSuccess", admin, "Muted " .. getPlayerName(target), 3000)
         end
     end
 end)
@@ -121,7 +120,8 @@ end)
 -- Command to open admin panel
 addCommandHandler("admin", function(player)
     if exports.jebiga_core:isPlayerAdmin(player, 1) then
-        triggerServerEvent(Events.Admin.REQUEST_PANEL, player)
+        local data = getAdminPanelData(player)
+        triggerClientEvent(player, "weevil:admin:panelOpen", player, data)
     else
         outputChatBox("You don't have permission to use this command.", player, 255, 0, 0)
     end

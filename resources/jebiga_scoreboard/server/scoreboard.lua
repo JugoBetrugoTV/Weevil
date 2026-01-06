@@ -3,6 +3,10 @@
     Server-side scoreboard data management
 ]]
 
+-- Config and Events from jebiga_core
+local Config = nil
+local Events = nil
+
 -- Get scoreboard data
 function getScoreboardData()
     local data = {}
@@ -48,8 +52,9 @@ end
 
 -- Send scoreboard data to player
 function sendScoreboardData(player)
+    if not Events then return end
     local data = getScoreboardData()
-    triggerClientEvent(player, Events.Scoreboard.UPDATE, player, data)
+    triggerClientEvent(player, "weevil:scoreboard:update", player, data)
 end
 
 -- Broadcast scoreboard update
@@ -57,12 +62,21 @@ function broadcastScoreboardUpdate()
     local data = getScoreboardData()
 
     for _, player in ipairs(getElementsByType("player")) do
-        triggerClientEvent(player, Events.Scoreboard.UPDATE, player, data)
+        triggerClientEvent(player, "weevil:scoreboard:update", player, data)
     end
 end
 
--- Periodic scoreboard update
-setTimer(broadcastScoreboardUpdate, Config.Scoreboard.updateInterval, 0)
+-- Initialize on resource start
+addEventHandler("onResourceStart", resourceRoot, function()
+    Config = exports.jebiga_core:getConfig()
+    Events = exports.jebiga_core:getEvents()
+
+    -- Periodic scoreboard update
+    local updateInterval = (Config and Config.Scoreboard and Config.Scoreboard.updateInterval) or 5000
+    setTimer(broadcastScoreboardUpdate, updateInterval, 0)
+
+    outputDebugString("[Jebiga Scoreboard] Scoreboard system initialized")
+end)
 
 -- Request handler
 addEvent("weevil:requestScoreboard", true)

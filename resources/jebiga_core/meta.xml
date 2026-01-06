@@ -23,8 +23,15 @@
     <script src="client/hud.lua" type="client"/>
 
     <!-- Exports -->
+    <export function="getConfig" type="shared"/>
+    <export function="getEvents" type="shared"/>
     <export function="getPlayerData" type="server"/>
     <export function="setPlayerData" type="server"/>
+    <export function="getCachedPlayerData" type="server"/>
+    <export function="loadPlayerData" type="server"/>
+    <export function="isPlayerAdmin" type="server"/>
+    <export function="isPlayerLoggedIn" type="server"/>
+    <export function="getPlayerAccountId" type="server"/>
     <export function="getPlayerPoints" type="server"/>
     <export function="addPlayerPoints" type="server"/>
     <export function="getPlayerMoney" type="server"/>
@@ -32,12 +39,18 @@
     <export function="removePlayerMoney" type="server"/>
     <export function="getPlayerStats" type="server"/>
     <export function="updatePlayerStats" type="server"/>
+    <export function="updatePlayerSettings" type="server"/>
     <export function="getCurrentGamemode" type="server"/>
     <export function="getArenaPlayers" type="server"/>
     <export function="isPlayerInArena" type="server"/>
+    <export function="addPlayerToArena" type="server"/>
+    <export function="removePlayerFromArena" type="server"/>
     <export function="teleportToLobby" type="server"/>
     <export function="teleportToArena" type="server"/>
     <export function="getOnlinePlayers" type="server"/>
+    <export function="broadcastMessage" type="server"/>
+    <export function="broadcastToGamemode" type="server"/>
+    <export function="getServerUptime" type="server"/>
 
     <!-- Database Exports -->
     <export function="db_query" type="server"/>

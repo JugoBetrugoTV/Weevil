@@ -215,4 +215,9 @@ Events.RunArena = {
     CHECKPOINT = "weevil:runarena:checkpoint"
 }
 
+-- Export function for other resources
+function getEvents()
+    return Events
+end
+
 return Events

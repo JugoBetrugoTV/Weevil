@@ -498,4 +498,9 @@ function Config.getGradientColors(gradientName, alpha)
     }
 end
 
+-- Export function for other resources
+function getConfig()
+    return Config
+end
+
 return Config

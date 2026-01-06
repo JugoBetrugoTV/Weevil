@@ -3,6 +3,10 @@
     Server-side lobby management with map detection and teleportation
 ]]
 
+-- Config and Events will be loaded from jebiga_core on resource start
+local Config = nil
+local Events = nil
+
 local lobbyPlayers = {}
 local gamemodeStatus = {}
 local detectedMaps = {}
@@ -112,6 +116,15 @@ end
 -- ============================================
 
 addEventHandler("onResourceStart", resourceRoot, function()
+    -- Get Config and Events from jebiga_core
+    Config = exports.jebiga_core:getConfig()
+    Events = exports.jebiga_core:getEvents()
+
+    if not Config then
+        outputDebugString("[Jebiga Lobby] ERROR: Could not get Config from jebiga_core!", 1)
+        return
+    end
+
     -- Scan for maps
     scanMapsForGamemodes()
 

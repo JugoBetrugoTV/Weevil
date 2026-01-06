@@ -73,25 +73,25 @@ function purchaseVehicle(player, vehicleId)
         INSERT INTO player_vehicles (account_id, vehicle_model) VALUES (?, ?)
     ]], accountId, vehicleId)
 
-    triggerClientEvent(player, Events.Notification.SHOW_SUCCESS, player, "Purchased " .. vehicleInfo.name .. "!", 3000)
+    triggerClientEvent(player, "weevil:notification:showSuccess", player, "Purchased " .. vehicleInfo.name .. "!", 3000)
 
     return true
 end
 
 -- Request handlers
-addEvent(Events.Garage.REQUEST_OPEN, true)
-addEventHandler(Events.Garage.REQUEST_OPEN, root, function()
+addEvent("weevil:garage:requestOpen", true)
+addEventHandler("weevil:garage:requestOpen", root, function()
     local vehicles = getPlayerVehicles(client)
-    triggerClientEvent(client, Events.Garage.OPEN, client, {
+    triggerClientEvent(client, "weevil:garage:open", client, {
         owned = vehicles,
         shop = vehicleShop
     })
 end)
 
-addEvent(Events.Garage.PURCHASE_VEHICLE, true)
-addEventHandler(Events.Garage.PURCHASE_VEHICLE, root, function(vehicleId)
+addEvent("weevil:garage:purchaseVehicle", true)
+addEventHandler("weevil:garage:purchaseVehicle", root, function(vehicleId)
     purchaseVehicle(client, vehicleId)
     -- Refresh
     local vehicles = getPlayerVehicles(client)
-    triggerClientEvent(client, Events.Garage.UPDATE_VEHICLES, client, vehicles)
+    triggerClientEvent(client, "weevil:garage:updateVehicles", client, vehicles)
 end)

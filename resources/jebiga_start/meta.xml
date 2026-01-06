@@ -1,0 +1,7 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_start" version="1.0.0" type="script" description="Jebiga MGM Startup Resource"/>
+
+    <script src="start.lua" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

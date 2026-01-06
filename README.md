@@ -1,6 +1,6 @@
-# Weevil Multi-Gamemode (MGM) for MTA:SA 1.6
+# Jebiga Multi-Gamemode (MGM) for MTA:SA 1.6
 
-A comprehensive Multi-Gamemode server for Multi Theft Auto: San Andreas, inspired by FFS Gaming and other classic MGM servers.
+A comprehensive, modern Multi-Gamemode server for Multi Theft Auto: San Andreas, inspired by FFS Gaming and other classic MGM servers.
 
 ## 🎮 Features
 
@@ -19,24 +19,40 @@ A comprehensive Multi-Gamemode server for Multi Theft Auto: San Andreas, inspire
 
 ### Core Systems
 - 🔐 **Account System** - Register/Login with MySQL database
+- 🏠 **Modern Lobby** - Beautiful gamemode selection with click-to-teleport
 - 📊 **Scoreboard** - Real-time player statistics
 - ⏱️ **TopTimes** - Track best times on maps
 - 📈 **Stats** - Comprehensive player statistics per gamemode
-- 💰 **Economy** - Money and points system
+- 💰 **Economy** - JCoins and Jebiga Points (JP) system
 - 🏆 **Achievements** - Unlock rewards for accomplishments
 - 🚗 **Garage** - Buy and customize vehicles
-- 👤 **User Panel** - View your profile and settings
+- 👤 **User Panel** - Feature-rich profile with 7 tabs
 - 🛡️ **Admin Panel** - Manage players and server
 
-### Additional Features
-- Lobby with gamemode selection GUI
-- Cinematic camera in lobby
-- VIP system with bonuses
-- Clan system
-- Friends list
-- Daily bonuses
-- Anti-cheat system
-- Map voting system
+### New in v2.0
+- **Modern Custom UI** - Beautiful dark theme with gradients and animations
+- **Clickable Lobby Cards** - Click on any gamemode to instantly teleport
+- **Automatic Map Detection** - Maps are auto-categorized by prefix (e.g., [DM], [Race])
+- **Enhanced User Panel** - 7 tabs: Overview, Statistics, Gamemodes, Achievements, Inventory, Friends, Settings
+- **Rank System** - Unranked → Bronze → Silver → Gold → Platinum → Diamond → Master
+- **Settings Panel** - Toggle sounds, notifications, HUD options
+
+### Map Prefix System
+Maps are automatically detected and categorized based on their name prefix:
+
+| Gamemode | Accepted Prefixes |
+|----------|-------------------|
+| DM | `[DM]`, `[Deathmatch]`, `DM-` |
+| Race | `[Race]`, `[Oldschool]`, `Race-`, `[OS]` |
+| DD | `[DD]`, `[Derby]`, `DD-`, `[Destruction]` |
+| Hunter | `[Hunter]`, `[Hunt]`, `Hunter-` |
+| Shooter | `[Shooter]`, `[FPS]`, `[CTF]`, `Shooter-` |
+| Stuntage | `[Stunt]`, `[Stuntage]`, `Stunt-` |
+| Trials | `[Trials]`, `[Trial]`, `Trials-` |
+| Carball | `[Carball]`, `[CB]`, `Carball-` |
+| Hot Pursuit | `[HP]`, `[HotPursuit]`, `[Pursuit]`, `HP-` |
+| Run Arena | `[Run]`, `[RunArena]`, `[RA]`, `Run-` |
+| Training | `[Training]`, `[Train]`, `[Practice]` |
 
 ## 📦 Installation
 
@@ -50,7 +66,7 @@ A comprehensive Multi-Gamemode server for Multi Theft Auto: San Andreas, inspire
 
 2. Create a MySQL database and update the configuration in:
    ```
-   resources/weevil_core/shared/config.lua
+   resources/jebiga_core/shared/config.lua
    ```
 
    Update the database settings:
@@ -58,7 +74,7 @@ A comprehensive Multi-Gamemode server for Multi Theft Auto: San Andreas, inspire
    Config.Database = {
        host = "localhost",
        port = 3306,
-       database = "weevil_mgm",
+       database = "jebiga_mgm",
        username = "your_username",
        password = "your_password",
        options = "autoreconnect=1;charset=utf8mb4"
@@ -67,7 +83,7 @@ A comprehensive Multi-Gamemode server for Multi Theft Auto: San Andreas, inspire
 
 3. Add to your `mtaserver.conf`:
    ```xml
-   <resource src="weevil_start" startup="1" protected="0"/>
+   <resource src="jebiga_start" startup="1" protected="0"/>
    ```
 
 4. Start the server!
@@ -77,12 +93,10 @@ A comprehensive Multi-Gamemode server for Multi Theft Auto: San Andreas, inspire
 ### Player Commands
 | Command | Description |
 |---------|-------------|
-| `/help` | Show available commands |
 | `/lobby` | Return to lobby |
-| `/join [gamemode]` | Join a gamemode |
-| `/leave` | Leave current gamemode |
+| `/hub` | Alias for /lobby |
+| `/maps <gamemode>` | List maps for a gamemode |
 | `/stats [player]` | View player stats |
-| `/profile` | Open your profile |
 | `/balance` | Check your balance |
 | `/pay [player] [amount]` | Send money to player |
 | `/daily` | Claim daily bonus |
@@ -101,56 +115,72 @@ A comprehensive Multi-Gamemode server for Multi Theft Auto: San Andreas, inspire
 | `/givemoney [player] [amount]` | 3 | Give money |
 | `/givepoints [player] [amount]` | 3 | Give points |
 | `/setadmin [player] [level]` | 4 | Set admin level |
-| `/admin` | 1 | Open admin panel |
+| `/jebigareload` | Owner | Reload all resources |
+| `/jebigastatus` | All | View server status |
 
 ### Keybinds
 | Key | Function |
 |-----|----------|
-| F1 | Show help |
-| F2 | Open gamemode selection |
-| F3 | Open profile |
-| F4 | Toggle scoreboard |
+| **F1** | Open gamemode selection (Lobby) |
+| **F3** | Open user panel |
+| **TAB** | Show scoreboard |
 | F5 | Open garage |
 | F7 | Toggle HUD |
-| TAB | Quick scoreboard |
+| ESC | Close current panel |
 
 ## 🗂️ Resource Structure
 
 ```
 resources/
-├── weevil_start/          # Startup resource
-├── weevil_core/           # Core functionality
-├── weevil_accounts/       # Account system
-├── weevil_lobby/          # Lobby system
-├── weevil_scoreboard/     # Scoreboard
-├── weevil_toptimes/       # Top times
-├── weevil_userpanel/      # User panel
-├── weevil_achievements/   # Achievements
-├── weevil_garage/         # Garage system
-├── weevil_admin/          # Admin panel
-├── weevil_dm/             # DM gamemode
-├── weevil_race/           # Race gamemode
-├── weevil_dd/             # DD gamemode
-├── weevil_hunter/         # Hunter gamemode
-├── weevil_shooter/        # Shooter gamemode
-├── weevil_stuntage/       # Stuntage gamemode
-├── weevil_trials/         # Trials gamemode
-├── weevil_carball/        # Carball gamemode
-├── weevil_hotpursuit/     # Hot Pursuit gamemode
-├── weevil_runarena/       # Run Arena gamemode
-└── weevil_training/       # Training gamemode
+├── jebiga_start/          # Startup resource
+├── jebiga_core/           # Core functionality & UI library
+│   ├── client/ui_lib.lua  # Custom UI components
+│   └── shared/config.lua  # Main configuration
+├── jebiga_accounts/       # Account system
+├── jebiga_lobby/          # Modern lobby with teleportation
+├── jebiga_scoreboard/     # Scoreboard
+├── jebiga_toptimes/       # Top times
+├── jebiga_userpanel/      # Enhanced user panel (7 tabs)
+├── jebiga_achievements/   # Achievements
+├── jebiga_garage/         # Garage system
+├── jebiga_admin/          # Admin panel
+├── jebiga_dm/             # DM gamemode
+├── jebiga_race/           # Race gamemode
+├── jebiga_dd/             # DD gamemode
+├── jebiga_hunter/         # Hunter gamemode
+├── jebiga_shooter/        # Shooter gamemode
+├── jebiga_stuntage/       # Stuntage gamemode
+├── jebiga_trials/         # Trials gamemode
+├── jebiga_carball/        # Carball gamemode
+├── jebiga_hotpursuit/     # Hot Pursuit gamemode
+├── jebiga_runarena/       # Run Arena gamemode
+└── jebiga_training/       # Training gamemode
 ```
+
+## 🎨 Custom Theme
+
+The server features a modern dark theme with:
+- Blue-to-purple gradients
+- Smooth hover animations
+- Card-based UI components
+- Responsive scaling
+- Custom color system
+
+Colors can be customized in `Config.Theme` within `jebiga_core/shared/config.lua`.
 
 ## 🛠️ Configuration
 
-All main configuration is in `weevil_core/shared/config.lua`:
+All main configuration is in `jebiga_core/shared/config.lua`:
 
-- Server settings
+- Server settings (name, motto, website)
 - Database configuration
-- Gamemode settings (points, money rewards, etc.)
+- Lobby settings
+- Map prefix detection patterns
+- Gamemode settings (points, money rewards, dimensions)
+- Achievement definitions
 - VIP settings
 - Admin levels
-- GUI theme colors
+- Theme colors and fonts
 
 ## 📝 Database Tables
 
@@ -172,6 +202,7 @@ The system automatically creates these tables:
 
 - Inspired by [FFS Gaming](https://ffs.gg/) and [Vultaic MGM](https://github.com/rasikhq/Vultaic-MGM)
 - Built for MTA:SA 1.6
+- Version 2.0.0
 
 ## 📄 License
 
@@ -179,4 +210,4 @@ MIT License - Feel free to use, modify, and distribute.
 
 ---
 
-**Weevil Gaming** - Multi-Gamemode Server for MTA:SA
+**Jebiga Gaming** - The Ultimate MTA Experience

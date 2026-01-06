@@ -1,0 +1,10 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_dd" version="1.0.0" type="gamemode" description="Jebiga DD (Destruction Derby)"/>
+
+    <script src="server/dd_server.lua" type="server"/>
+    <script src="client/dd_client.lua" type="client"/>
+
+    <include resource="jebiga_core"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

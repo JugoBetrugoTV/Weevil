@@ -1,0 +1,10 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_stuntage" version="1.0.0" type="gamemode" description="Jebiga Stuntage"/>
+
+    <script src="server/stuntage_server.lua" type="server"/>
+    <script src="client/stuntage_client.lua" type="client"/>
+
+    <include resource="jebiga_core"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

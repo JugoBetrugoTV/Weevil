@@ -1,0 +1,7 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_hotpursuit" version="1.0.0" type="gamemode" description="Jebiga Hot Pursuit (Racers vs Police)"/>
+    <script src="server/hp_server.lua" type="server"/>
+    <script src="client/hp_client.lua" type="client"/>
+    <include resource="jebiga_core"/>
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

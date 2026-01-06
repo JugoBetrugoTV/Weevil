@@ -1,0 +1,10 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_userpanel" version="1.0.0" type="script" description="Jebiga MGM User Panel"/>
+
+    <script src="server/userpanel.lua" type="server"/>
+    <script src="client/userpanel_gui.lua" type="client"/>
+
+    <include resource="jebiga_core"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

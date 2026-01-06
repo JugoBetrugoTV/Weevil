@@ -1,7 +1,0 @@
-<meta>
-    <info author="Weevil Team" name="weevil_start" version="1.0.0" type="script" description="Weevil MGM Startup Resource"/>
-
-    <script src="start.lua" type="server"/>
-
-    <min_mta_version client="1.6.0" server="1.6.0"/>
-</meta>

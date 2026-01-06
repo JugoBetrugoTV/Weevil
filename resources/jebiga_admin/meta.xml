@@ -1,0 +1,10 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_admin" version="1.0.0" type="script" description="Jebiga Admin Panel"/>
+
+    <script src="server/admin_server.lua" type="server"/>
+    <script src="client/admin_gui.lua" type="client"/>
+
+    <include resource="jebiga_core"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

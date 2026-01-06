@@ -1,0 +1,19 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_toptimes" version="1.0.0" type="script" description="Jebiga MGM TopTimes System"/>
+
+    <!-- Server Scripts -->
+    <script src="server/toptimes.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/toptimes_gui.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="getTopTimes" type="server"/>
+    <export function="addTopTime" type="server"/>
+    <export function="getPlayerTopTime" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

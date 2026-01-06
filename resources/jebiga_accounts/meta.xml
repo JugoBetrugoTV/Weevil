@@ -1,0 +1,20 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_accounts" version="1.0.0" type="script" description="Jebiga MGM Account System"/>
+
+    <!-- Server Scripts -->
+    <script src="server/accounts.lua" type="server"/>
+    <script src="server/security.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/login_gui.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="isLoggedIn" type="server"/>
+    <export function="getAccountData" type="server"/>
+    <export function="setAccountData" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

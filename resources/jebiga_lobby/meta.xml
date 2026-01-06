@@ -1,0 +1,16 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_lobby" version="1.0.0" type="script" description="Jebiga MGM Lobby System"/>
+
+    <!-- Server Scripts -->
+    <script src="server/lobby.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/lobby_gui.lua" type="client"/>
+    <script src="client/lobby_camera.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+    <include resource="jebiga_accounts"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

@@ -189,10 +189,17 @@ function awardRoundPrizes(gamemode, rankings)
 
         -- Update stats
         updatePlayerStats(player, gamemode, "racesFinished", 1)
-        if i < (getPlayerStats(player, gamemode)?.bestPosition or 999) then
-            local stats = getPlayerStats(player, gamemode)
-            if stats then
-                stats.bestPosition = i
+        local currentStats = getPlayerStats(player, gamemode)
+        local currentBest = (currentStats and currentStats.bestPosition) or 999
+        if i < currentBest then
+            -- Update best position in cache and database
+            if currentStats then
+                currentStats.bestPosition = i
+                local accountId = getElementData(player, "jebiga:accountId")
+                if accountId then
+                    execute([[UPDATE player_stats SET best_position = ? WHERE account_id = ? AND gamemode = ?]],
+                        i, accountId, gamemode)
+                end
             end
         end
 
@@ -331,34 +338,43 @@ end
 function getRandomMaps(gamemode, count)
     local maps = {}
 
-    -- Query database for maps
-    local queryHandle = dbQuery(connection, [[
+    -- Query database for maps using centralized database functions
+    local result = fetchAll([[
         SELECT * FROM maps WHERE gamemode = ? ORDER BY RAND() LIMIT ?
     ]], gamemode, count)
 
-    if queryHandle then
-        local result = dbPoll(queryHandle, -1)
-        dbFree(queryHandle)
+    if result then
+        for _, row in ipairs(result) do
+            table.insert(maps, {
+                id = row.id,
+                name = row.display_name or row.resource_name,
+                resource = row.resource_name,
+                author = row.author,
+                difficulty = row.difficulty or 3
+            })
+        end
+    end
 
-        if result then
-            for _, row in ipairs(result) do
-                table.insert(maps, {
-                    id = row.id,
-                    name = row.name,
-                    resource = row.resource_name,
-                    author = row.author,
-                    difficulty = row.difficulty
-                })
+    -- If no maps in database, scan for map resources
+    if #maps == 0 then
+        local maploader = getResourceFromName("jebiga_maploader")
+        if maploader and getResourceState(maploader) == "running" then
+            -- Get maps from maploader
+            local allMaps = exports.jebiga_mapmanager:getMapList(gamemode) or {}
+            for i = 1, math.min(count, #allMaps) do
+                local idx = math.random(#allMaps)
+                table.insert(maps, allMaps[idx])
+                table.remove(allMaps, idx)
             end
         end
     end
 
-    -- If no maps in database, create placeholder maps
+    -- Fallback: create placeholder maps
     if #maps == 0 then
         for i = 1, count do
             table.insert(maps, {
                 id = i,
-                name = gamemode .. " Map " .. i,
+                name = gamemode:upper() .. " Map " .. i,
                 resource = gamemode .. "_map_" .. i,
                 author = "Jebiga",
                 difficulty = math.random(1, 5)

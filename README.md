@@ -37,6 +37,13 @@ A comprehensive, modern Multi-Gamemode server for Multi Theft Auto: San Andreas,
 - **Rank System** - Unranked → Bronze → Silver → Gold → Platinum → Diamond → Master
 - **Settings Panel** - Toggle sounds, notifications, HUD options
 
+### New in v2.1 (Vultaic-Inspired Features)
+- **Custom HUD** - Speedometer with animated arc, health/armor bars, FPS/ping display
+- **Vehicle Neons** - Customizable underglow lights with rainbow mode (Press N)
+- **Vehicle Tuning** - Full tuning system with paint, wheels, spoilers, nitro (Press F6)
+- **Music Player** - Custom radio stations and volume control (Press F8)
+- **Clan System** - Create clans, invite members, clan chat (Press F9)
+
 ### Map Prefix System
 Maps are automatically detected and categorized based on their name prefix:
 
@@ -102,6 +109,14 @@ Maps are automatically detected and categorized based on their name prefix:
 | `/daily` | Claim daily bonus |
 | `/top [money/gamemode]` | View leaderboards |
 | `/pm [player] [message]` | Private message |
+| `/neon` | Open neon lights menu |
+| `/tuning` | Open vehicle tuning |
+| `/music` | Open music player |
+| `/clan` | Open clan panel |
+| `/cc [message]` | Clan chat |
+| `/hud` | Toggle HUD |
+| `/speedo` | Toggle speedometer |
+| `/vol [0-100]` | Set music volume |
 
 ### Admin Commands
 | Command | Level | Description |
@@ -123,10 +138,14 @@ Maps are automatically detected and categorized based on their name prefix:
 |-----|----------|
 | **F1** | Open gamemode selection (Lobby) |
 | **F3** | Open user panel |
+| **F5** | Open garage |
+| **F6** | Open vehicle tuning |
+| **F7** | Toggle HUD |
+| **F8** | Open music player |
+| **F9** | Open clan panel |
+| **N** | Open neon lights menu (in vehicle) |
 | **TAB** | Show scoreboard |
-| F5 | Open garage |
-| F7 | Toggle HUD |
-| ESC | Close current panel |
+| **ESC** | Close current panel |
 
 ## 🗂️ Resource Structure
 
@@ -135,6 +154,7 @@ resources/
 ├── jebiga_start/          # Startup resource
 ├── jebiga_core/           # Core functionality & UI library
 │   ├── client/ui_lib.lua  # Custom UI components
+│   ├── client/hud.lua     # Custom HUD with speedometer
 │   └── shared/config.lua  # Main configuration
 ├── jebiga_accounts/       # Account system
 ├── jebiga_lobby/          # Modern lobby with teleportation
@@ -144,6 +164,10 @@ resources/
 ├── jebiga_achievements/   # Achievements
 ├── jebiga_garage/         # Garage system
 ├── jebiga_admin/          # Admin panel
+├── jebiga_neons/          # Vehicle neon lights system
+├── jebiga_tuning/         # Vehicle tuning/customization
+├── jebiga_music/          # Music/radio player
+├── jebiga_clans/          # Clan system
 ├── jebiga_dm/             # DM gamemode
 ├── jebiga_race/           # Race gamemode
 ├── jebiga_dd/             # DD gamemode
@@ -202,7 +226,7 @@ The system automatically creates these tables:
 
 - Inspired by [FFS Gaming](https://ffs.gg/) and [Vultaic MGM](https://github.com/rasikhq/Vultaic-MGM)
 - Built for MTA:SA 1.6
-- Version 2.0.0
+- Version 2.1.0
 
 ## 📄 License
 

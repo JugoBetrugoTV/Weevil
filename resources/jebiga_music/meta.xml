@@ -1,0 +1,20 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_music" version="1.0.0" type="script" description="Music/Radio System"/>
+
+    <!-- Server Scripts -->
+    <script src="server/music.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/music.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="setCustomStation" type="server"/>
+    <export function="getCustomStations" type="server"/>
+    <export function="broadcastMusic" type="server"/>
+    <export function="stopBroadcast" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

@@ -1,0 +1,23 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_neons" version="1.0.0" type="script" description="Vehicle Neon Lights System"/>
+
+    <!-- Server Scripts -->
+    <script src="server/neons.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/neons.lua" type="client"/>
+
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="getVehicleNeon" type="server"/>
+    <export function="setVehicleNeon" type="server"/>
+    <export function="removeVehicleNeon" type="server"/>
+    <export function="setNeonColor" type="client"/>
+    <export function="getNeonColor" type="client"/>
+    <export function="hasNeon" type="client"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

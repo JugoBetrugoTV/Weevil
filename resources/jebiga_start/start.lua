@@ -17,6 +17,12 @@ local resources = {
     "jebiga_garage",
     "jebiga_admin",
 
+    -- New Vultaic-inspired features
+    "jebiga_neons",
+    "jebiga_tuning",
+    "jebiga_music",
+    "jebiga_clans",
+
     -- Gamemodes
     "jebiga_dm",
     "jebiga_race",
@@ -152,12 +158,19 @@ addCommandHandler("jebigastatus", function(player)
 end)
 
 -- Help command
-addCommandHandler("jebigathelp", function(player)
+addCommandHandler("jebigahelp", function(player)
     outputChatBox("#2980B9[JEBIGA] #FFFFFFAvailable Commands:", player, 255, 255, 255, true)
     outputChatBox("#95A5A6  /lobby #FFFFFF- Return to lobby", player, 255, 255, 255, true)
     outputChatBox("#95A5A6  /maps <gamemode> #FFFFFF- List maps for gamemode", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  /neon #FFFFFF- Open neon lights menu", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  /tuning #FFFFFF- Open vehicle tuning", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  /music #FFFFFF- Open music player", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  /clan #FFFFFF- Open clan system", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  /cc <msg> #FFFFFF- Clan chat", player, 255, 255, 255, true)
     outputChatBox("#95A5A6  /jebigastatus #FFFFFF- Server status", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  F1 #FFFFFF- Open gamemode selection", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  F3 #FFFFFF- Open user panel", player, 255, 255, 255, true)
-    outputChatBox("#95A5A6  TAB #FFFFFF- Show scoreboard", player, 255, 255, 255, true)
+    outputChatBox("#2980B9[JEBIGA] #FFFFFFKeybinds:", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  F1 #FFFFFF- Gamemode selection | #95A5A6F3 #FFFFFF- User panel", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  F6 #FFFFFF- Vehicle tuning | #95A5A6F7 #FFFFFF- Toggle HUD", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  F8 #FFFFFF- Music player | #95A5A6F9 #FFFFFF- Clan panel", player, 255, 255, 255, true)
+    outputChatBox("#95A5A6  N #FFFFFF- Neon lights | #95A5A6TAB #FFFFFF- Scoreboard", player, 255, 255, 255, true)
 end)

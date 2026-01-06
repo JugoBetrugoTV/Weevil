@@ -1,0 +1,18 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_tuning" version="1.0.0" type="script" description="Vehicle Tuning System"/>
+
+    <!-- Server Scripts -->
+    <script src="server/tuning.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/tuning.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="applyVehicleUpgrade" type="server"/>
+    <export function="setVehicleCustomColor" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

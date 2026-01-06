@@ -1,0 +1,20 @@
+<meta>
+    <info author="Jebiga Team" name="jebiga_clans" version="1.0.0" type="script" description="Clan System"/>
+
+    <!-- Server Scripts -->
+    <script src="server/clans.lua" type="server"/>
+
+    <!-- Client Scripts -->
+    <script src="client/clans.lua" type="client"/>
+
+    <!-- Dependencies -->
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="getPlayerClanData" type="server"/>
+    <export function="getPlayerClanTag" type="server"/>
+    <export function="isPlayerInClan" type="server"/>
+    <export function="getClanData" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

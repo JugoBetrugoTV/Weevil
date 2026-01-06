@@ -20,6 +20,7 @@
     <script src="client/main.lua" type="client"/>
     <script src="client/notifications.lua" type="client"/>
     <script src="client/sounds.lua" type="client"/>
+    <script src="client/hud.lua" type="client"/>
 
     <!-- Exports -->
     <export function="getPlayerData" type="server"/>

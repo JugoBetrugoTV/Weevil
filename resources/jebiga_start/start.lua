@@ -7,6 +7,7 @@ local resources = {
     -- Core systems (start first)
     "jebiga_core",
     "jebiga_accounts",
+    "jebiga_maploader",
 
     -- Support systems
     "jebiga_lobby",
@@ -95,7 +96,7 @@ addEventHandler("onResourceStart", resourceRoot, function()
     outputServerLog("╔══════════════════════════════════════════╗")
     outputServerLog("║                                          ║")
     outputServerLog("║       JEBIGA MULTI-GAMEMODE SERVER       ║")
-    outputServerLog("║              Version 2.4.0               ║")
+    outputServerLog("║              Version 2.5.0               ║")
     outputServerLog("║                                          ║")
     outputServerLog("║         The Ultimate MTA Experience      ║")
     outputServerLog("║                                          ║")
@@ -164,7 +165,7 @@ addCommandHandler("jebigastatus", function(player)
     end
 
     outputChatBox("#2980B9║  #95A5A6Resources: #2ECC71" .. running .. "/" .. #resources .. " running       #2980B9║", player, 255, 255, 255, true)
-    outputChatBox("#2980B9║  #95A5A6Version:   #FFFFFF2.4.0              #2980B9║", player, 255, 255, 255, true)
+    outputChatBox("#2980B9║  #95A5A6Version:   #FFFFFF2.5.0              #2980B9║", player, 255, 255, 255, true)
     outputChatBox("#2980B9╚═══════════════════════════════╝", player, 255, 255, 255, true)
 end)
 

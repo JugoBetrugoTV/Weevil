@@ -1,0 +1,21 @@
+<meta>
+    <info author="Jebiga" version="1.0.0" name="Jebiga Map Loader" description="Core map loading system for Jebiga MGM" type="script"/>
+
+    <script src="server/maploader.lua" type="server"/>
+    <script src="client/maploader.lua" type="client"/>
+
+    <include resource="jebiga_core"/>
+
+    <!-- Exports -->
+    <export function="loadMapResource" type="server"/>
+    <export function="unloadCurrentMap" type="server"/>
+    <export function="spawnPlayerAtMap" type="server"/>
+    <export function="unfreezeAllPlayers" type="server"/>
+    <export function="getCurrentMapName" type="server"/>
+    <export function="getSpawnPoints" type="server"/>
+    <export function="getCheckpoints" type="server"/>
+    <export function="getMapSettings" type="server"/>
+    <export function="getPlayerCheckpointProgress" type="server"/>
+
+    <min_mta_version client="1.6.0" server="1.6.0"/>
+</meta>

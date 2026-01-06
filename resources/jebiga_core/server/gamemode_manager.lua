@@ -295,16 +295,36 @@ end
 
 -- Get map spawn points
 function getMapSpawnPoints(gamemode)
-    -- Default spawn points (should be loaded from map resource)
+    -- Try to get spawn points from maploader
+    local maploader = getResourceFromName("jebiga_maploader")
+    if maploader and getResourceState(maploader) == "running" then
+        local spawns = exports.jebiga_maploader:getSpawnPoints()
+        if spawns and #spawns > 0 then
+            return spawns
+        end
+    end
+
+    -- Default spawn points (fallback)
     local defaultSpawns = {
-        { x = 0, y = 0, z = 5, rot = 0 },
-        { x = 5, y = 0, z = 5, rot = 0 },
-        { x = -5, y = 0, z = 5, rot = 0 },
-        { x = 0, y = 5, z = 5, rot = 0 },
-        { x = 0, y = -5, z = 5, rot = 0 }
+        { x = 0, y = 0, z = 5, rot = 0, rotZ = 0 },
+        { x = 5, y = 0, z = 5, rot = 0, rotZ = 0 },
+        { x = -5, y = 0, z = 5, rot = 0, rotZ = 0 },
+        { x = 0, y = 5, z = 5, rot = 0, rotZ = 0 },
+        { x = 0, y = -5, z = 5, rot = 0, rotZ = 0 }
     }
 
     return defaultSpawns
+end
+
+-- Load a map using the maploader
+function loadGamemodeMap(gamemode, mapName)
+    local maploader = getResourceFromName("jebiga_maploader")
+    if maploader and getResourceState(maploader) == "running" then
+        local cfg = Config.Gamemodes[gamemode]
+        local dimension = cfg and cfg.dimension or 0
+        return exports.jebiga_maploader:loadMapResource(mapName, dimension)
+    end
+    return false
 end
 
 -- Get random maps for voting
@@ -356,28 +376,47 @@ function spawnPlayerInArena(player, gamemode, spawn)
 
     setElementDimension(player, cfg.dimension)
 
+    -- Try to use maploader for race-type gamemodes
+    local maploader = getResourceFromName("jebiga_maploader")
+    if maploader and getResourceState(maploader) == "running" then
+        if gamemode == "race" or gamemode == "dm" or gamemode == "dd" then
+            -- Let maploader handle spawning with proper checkpoint init
+            local spawnIndex = nil
+            for i, s in ipairs(getMapSpawnPoints(gamemode)) do
+                if s.x == spawn.x and s.y == spawn.y then
+                    spawnIndex = i
+                    break
+                end
+            end
+            local success = exports.jebiga_maploader:spawnPlayerAtMap(player, spawnIndex)
+            if success then return true end
+        end
+    end
+
+    local rotZ = spawn.rotZ or spawn.rot or 0
+
     -- Spawn based on gamemode type
     if gamemode == "hunter" then
         -- Spawn in Hunter helicopter
-        local vehicle = createVehicle(425, spawn.x, spawn.y, spawn.z, 0, 0, spawn.rot or 0)
+        local vehicle = createVehicle(425, spawn.x, spawn.y, spawn.z, 0, 0, rotZ)
         setElementDimension(vehicle, cfg.dimension)
         spawnPlayer(player, spawn.x, spawn.y, spawn.z + 2)
         warpPedIntoVehicle(player, vehicle)
     elseif gamemode == "shooter" or gamemode == "runarena" then
         -- Spawn on foot with weapons
-        spawnPlayer(player, spawn.x, spawn.y, spawn.z, spawn.rot or 0)
+        spawnPlayer(player, spawn.x, spawn.y, spawn.z, rotZ)
         giveWeapon(player, 24, 100) -- Desert Eagle
         giveWeapon(player, 31, 200) -- M4
     elseif gamemode == "trials" then
         -- Spawn on motorbike
-        local vehicle = createVehicle(522, spawn.x, spawn.y, spawn.z, 0, 0, spawn.rot or 0) -- NRG-500
+        local vehicle = createVehicle(522, spawn.x, spawn.y, spawn.z, 0, 0, rotZ) -- NRG-500
         setElementDimension(vehicle, cfg.dimension)
         spawnPlayer(player, spawn.x, spawn.y, spawn.z + 2)
         warpPedIntoVehicle(player, vehicle)
     else
         -- Default vehicle spawn (for DM, Race, DD, etc.)
-        local vehicleId = 411 -- Infernus default
-        local vehicle = createVehicle(vehicleId, spawn.x, spawn.y, spawn.z, 0, 0, spawn.rot or 0)
+        local vehicleId = spawn.vehicle or 411 -- Use map vehicle or Infernus default
+        local vehicle = createVehicle(vehicleId, spawn.x, spawn.y, spawn.z, 0, 0, rotZ)
         setElementDimension(vehicle, cfg.dimension)
         spawnPlayer(player, spawn.x, spawn.y, spawn.z + 2)
         warpPedIntoVehicle(player, vehicle)

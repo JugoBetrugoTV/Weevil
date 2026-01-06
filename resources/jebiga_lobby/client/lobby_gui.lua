@@ -1,36 +1,61 @@
 --[[
-    Jebiga Multi-Gamemode - Lobby GUI
-    Beautiful, modern lobby with clickable gamemode selection and teleportation
+    Jebiga Multi-Gamemode - Fullscreen Lobby Panel
+    Panel-based lobby - NO walking around, just click to select gamemode
 ]]
 
 local screenW, screenH = guiGetScreenSize()
 local scale = screenH / 1080
 
 -- State
-local isLobbyOpen = false
-local selectedGamemode = nil
-local scrollOffset = 0
-local maxScroll = 0
+local isLobbyVisible = false
 local mapCounts = {}
 local playerCounts = {}
+local hoverGamemode = nil
 local clickCooldown = false
-local lastClickTime = 0
 
--- Animation states
-local fadeIn = 0
-local cardAnimations = {}
+-- Animation
+local fadeAlpha = 0
+local targetAlpha = 0
 
--- Gamemode order for display
-local gamemodeOrder = {"dm", "race", "dd", "hunter", "shooter", "stuntage", "trials", "carball", "hotpursuit", "runarena", "training"}
+-- Gamemode definitions with colors
+local gamemodes = {
+    { id = "dm", name = "DEATHMATCH", color = {255, 68, 68}, maxPlayers = 560 },
+    { id = "race", name = "RACE", color = {68, 255, 68}, maxPlayers = 128 },
+    { id = "dd", name = "DERBY", color = {255, 136, 68}, maxPlayers = 120 },
+    { id = "hunter", name = "HUNTER", color = {68, 136, 255}, maxPlayers = 56 },
+    { id = "shooter", name = "SHOOTER", color = {255, 68, 255}, maxPlayers = 64 },
+    { id = "stuntage", name = "STUNTAGE", color = {255, 255, 68}, maxPlayers = 64 },
+    { id = "trials", name = "TRIALS", color = {68, 255, 255}, maxPlayers = 32 },
+    { id = "hotpursuit", name = "HOT PURSUIT", color = {136, 68, 255}, maxPlayers = 50 },
+    { id = "runarena", name = "RUN", color = {255, 136, 136}, maxPlayers = 64 },
+    { id = "clanwars", name = "CLAN WARS", color = {255, 200, 68}, maxPlayers = 32 },
+    { id = "ptp", name = "PTP", color = {68, 200, 136}, maxPlayers = 128 },
+    { id = "carball", name = "CARBALL", color = {136, 255, 136}, maxPlayers = 20 },
+    { id = "training", name = "TRAINING", color = {136, 136, 136}, maxPlayers = 32 },
+    { id = "minigames", name = "MINIGAMES", color = {200, 136, 255}, maxPlayers = 96 },
+    { id = "garage", name = "GARAGE", color = {100, 150, 200}, maxPlayers = 0, isGarage = true },
+    { id = "geoguesser", name = "GEOGUESSER", color = {68, 200, 200}, maxPlayers = 64 },
+    { id = "coming1", name = "COMING SOON", color = {80, 80, 80}, comingSoon = true },
+    { id = "coming2", name = "COMING SOON", color = {80, 80, 80}, comingSoon = true },
+    { id = "coming3", name = "COMING SOON", color = {80, 80, 80}, comingSoon = true },
+    { id = "coming4", name = "COMING SOON", color = {80, 80, 80}, comingSoon = true },
+}
+
+-- Grid settings
+local cols = 5
+local rows = 4
+local cardPadding = 8 * scale
+local gridStartX = 80 * scale
+local gridStartY = 120 * scale
 
 -- ============================================
 -- INITIALIZATION
 -- ============================================
 
 addEventHandler("onClientResourceStart", resourceRoot, function()
-    -- Request initial data
-    triggerServerEvent("jebiga:lobby:requestData", localPlayer)
-    outputDebugString("[Jebiga Lobby] Lobby GUI initialized")
+    setTimer(function()
+        triggerServerEvent("jebiga:lobby:requestData", localPlayer)
+    end, 1000, 1)
 end)
 
 -- ============================================
@@ -58,58 +83,56 @@ end)
 -- ============================================
 
 function showLobby()
-    isLobbyOpen = true
+    isLobbyVisible = true
+    targetAlpha = 255
     showCursor(true)
-    fadeIn = 0
+    showChat(false)
 
-    -- Initialize card animations
-    for i, gm in ipairs(gamemodeOrder) do
-        cardAnimations[gm] = { offset = 100, alpha = 0, delay = i * 50, startTime = nil }
-    end
+    -- Freeze player completely
+    setElementFrozen(localPlayer, true)
+    setElementAlpha(localPlayer, 0)
 
-    -- Request fresh data
+    -- Hide all HUD
+    setPlayerHudComponentVisible("all", false)
+
+    -- Set scenic camera (fixed position)
+    setCameraMatrix(1500, -1700, 80, 1481, -1770, 18)
+
+    -- Request data
     triggerServerEvent("jebiga:lobby:requestData", localPlayer)
 end
 
 function hideLobby()
-    isLobbyOpen = false
+    isLobbyVisible = false
+    targetAlpha = 0
     showCursor(false)
-    selectedGamemode = nil
+    showChat(true)
+
+    -- Unfreeze player
+    setElementFrozen(localPlayer, false)
+    setElementAlpha(localPlayer, 255)
+
+    -- Restore HUD
+    setPlayerHudComponentVisible("all", true)
+
+    -- Reset camera to player
+    setCameraTarget(localPlayer)
 end
 
 function toggleLobby()
-    if isLobbyOpen then
+    if isLobbyVisible then
         hideLobby()
     else
         showLobby()
     end
 end
 
--- Keybind for lobby
-bindKey("F1", "down", function()
-    toggleLobby()
-end)
+-- F1 to toggle
+bindKey("F1", "down", toggleLobby)
 
 -- ============================================
--- HELPER FUNCTIONS
+-- HELPERS
 -- ============================================
-
-function getGamemodeSymbol(shortName)
-    local symbols = {
-        DM = "DM",
-        Race = "RC",
-        DD = "DD",
-        Hunter = "HT",
-        FPS = "FPS",
-        Stunt = "ST",
-        Trials = "TR",
-        CB = "CB",
-        HP = "HP",
-        Run = "RN",
-        Train = "TN"
-    }
-    return symbols[shortName] or shortName:sub(1, 2):upper()
-end
 
 function isMouseOver(x, y, w, h)
     if not isCursorShowing() then return false end
@@ -119,374 +142,222 @@ function isMouseOver(x, y, w, h)
     return cx >= x and cx <= x + w and cy >= y and cy <= y + h
 end
 
-function lerpColor(c1, c2, t)
-    return {
-        c1[1] + (c2[1] - c1[1]) * t,
-        c1[2] + (c2[2] - c1[2]) * t,
-        c1[3] + (c2[3] - c1[3]) * t
-    }
-end
-
-function joinGamemode(gmKey)
-    -- Prevent double clicks
-    local now = getTickCount()
-    if now - lastClickTime < 500 then return end
-    lastClickTime = now
-
-    -- Play sound effect
-    playSoundFrontEnd(40)
-
-    -- Show feedback
-    outputChatBox("#2980B9[JEBIGA] #FFFFFFTeleporting to " .. (Config.Gamemodes[gmKey] and Config.Gamemodes[gmKey].name or gmKey) .. "...", 255, 255, 255, true)
-
-    -- Trigger server teleport
-    triggerServerEvent("jebiga:lobby:joinGamemode", localPlayer, gmKey)
-
-    -- Close lobby with delay for visual feedback
-    setTimer(function()
-        hideLobby()
-    end, 300, 1)
+function getTotalOnline()
+    local total = 0
+    for _, count in pairs(playerCounts) do
+        total = total + count
+    end
+    return math.max(total, #getElementsByType("player"))
 end
 
 -- ============================================
--- DRAWING
+-- MAIN RENDERING
 -- ============================================
 
 addEventHandler("onClientRender", root, function()
-    if not isLobbyOpen then return end
-
-    -- Animate fade in
-    fadeIn = math.min(fadeIn + 0.08, 1)
-    local globalAlpha = fadeIn * 255
-
-    -- Animate card entrance
-    local currentTime = getTickCount()
-    for gm, anim in pairs(cardAnimations) do
-        if anim.startTime then
-            local elapsed = currentTime - anim.startTime
-            if elapsed > anim.delay then
-                local progress = math.min((elapsed - anim.delay) / 300, 1)
-                -- Ease out cubic
-                progress = 1 - math.pow(1 - progress, 3)
-                anim.offset = 100 * (1 - progress)
-                anim.alpha = 255 * progress
-            end
-        else
-            anim.startTime = currentTime
-        end
+    -- Animate fade
+    if fadeAlpha < targetAlpha then
+        fadeAlpha = math.min(fadeAlpha + 15, targetAlpha)
+    elseif fadeAlpha > targetAlpha then
+        fadeAlpha = math.max(fadeAlpha - 15, targetAlpha)
     end
 
-    -- Dark overlay with blur simulation
-    dxDrawRectangle(0, 0, screenW, screenH, tocolor(0, 0, 0, 200 * fadeIn), false)
+    if fadeAlpha <= 0 then return end
 
-    -- Main container
-    local panelW = screenW * 0.92
-    local panelH = screenH * 0.88
-    local panelX = (screenW - panelW) / 2
-    local panelY = (screenH - panelH) / 2
+    local alpha = fadeAlpha
 
-    -- Draw main panel
-    drawMainPanel(panelX, panelY, panelW, panelH, globalAlpha)
+    -- Dark background overlay
+    dxDrawRectangle(0, 0, screenW, screenH, tocolor(20, 25, 30, alpha * 0.92))
 
-    -- Draw header
-    drawHeader(panelX, panelY, panelW, 90 * scale, globalAlpha)
+    -- Top gradient
+    for i = 0, 60 do
+        local a = (60 - i) / 60 * 80 * (alpha/255)
+        dxDrawRectangle(0, i, screenW, 1, tocolor(50, 55, 60, a))
+    end
+
+    -- Daily challenges (top right)
+    drawDailyChallenges(screenW - 280 * scale, 15 * scale, 260 * scale, alpha)
 
     -- Draw gamemode grid
-    local contentY = panelY + 110 * scale
-    local contentH = panelH - 160 * scale
-    drawGamemodeGrid(panelX + 30, contentY, panelW - 60, contentH, globalAlpha)
+    drawGamemodeGrid(alpha)
 
-    -- Draw footer
-    drawFooter(panelX, panelY + panelH - 45 * scale, panelW, 45 * scale, globalAlpha)
+    -- Online counter at bottom
+    drawOnlineCounter(alpha)
+
+    hoverGamemode = nil
 end)
 
-function drawMainPanel(x, y, w, h, alpha)
-    -- Multiple shadow layers for depth
-    for i = 6, 1, -1 do
-        dxDrawRectangle(x + i*4, y + i*4, w, h, tocolor(0, 0, 0, (25/i) * (alpha/255)), false)
+-- ============================================
+-- DAILY CHALLENGES
+-- ============================================
+
+function drawDailyChallenges(x, y, w, alpha)
+    local h = 90 * scale
+
+    -- Background
+    dxDrawRectangle(x, y, w, h, tocolor(30, 30, 35, alpha * 0.95))
+
+    -- Header bar
+    dxDrawRectangle(x, y, w, 22 * scale, tocolor(180, 140, 50, alpha))
+    dxDrawText("Daily Challenges", x, y, x + w, y + 22 * scale,
+        tocolor(255, 255, 255, alpha), 0.85 * scale, "default-bold", "center", "center")
+
+    -- Challenges
+    local challenges = {
+        { text = "Win 3 DM Hard rounds", progress = "0/3" },
+        { text = "Kill 30 players in Shooter Beta Ground", progress = "0/30" },
+        { text = "Kill 30 players in DD Alpha", progress = "0/36" },
+    }
+
+    local itemY = y + 26 * scale
+    for _, ch in ipairs(challenges) do
+        dxDrawText(ch.text, x + 8, itemY, x + w - 40, itemY + 18 * scale,
+            tocolor(170, 170, 170, alpha), 0.65 * scale, "default", "left", "center")
+        dxDrawText(ch.progress, x + w - 38, itemY, x + w - 5, itemY + 18 * scale,
+            tocolor(180, 140, 50, alpha), 0.65 * scale, "default", "right", "center")
+        itemY = itemY + 20 * scale
     end
-
-    -- Main background - dark with slight transparency
-    dxDrawRectangle(x, y, w, h, tocolor(15, 15, 20, alpha * 0.98), false)
-
-    -- Animated gradient top border
-    local gradientHeight = 4
-    for i = 0, gradientHeight do
-        local progress = i / gradientHeight
-        local r = math.floor(41 + (155 - 41) * progress)
-        local g = math.floor(128 + (89 - 128) * progress)
-        local b = math.floor(185 + (182 - 185) * progress)
-        dxDrawRectangle(x, y + i, w, 1, tocolor(r, g, b, alpha), false)
-    end
-
-    -- Subtle inner glow from top
-    for i = 0, 30 do
-        local glowAlpha = (30 - i) * 1.5 * (alpha/255)
-        dxDrawRectangle(x + 1, y + gradientHeight + i, w - 2, 1, tocolor(41, 128, 185, glowAlpha), false)
-    end
-
-    -- Side borders
-    dxDrawRectangle(x, y, 2, h, tocolor(41, 128, 185, alpha * 0.4), false)
-    dxDrawRectangle(x + w - 2, y, 2, h, tocolor(155, 89, 182, alpha * 0.4), false)
-    dxDrawRectangle(x, y + h - 2, w, 2, tocolor(40, 40, 50, alpha * 0.8), false)
-end
-
-function drawHeader(x, y, w, h, alpha)
-    -- Header background with gradient
-    for i = 0, h do
-        local progress = i / h
-        local r = math.floor(25 + progress * 5)
-        local g = math.floor(28 + progress * 5)
-        local b = math.floor(36 + progress * 5)
-        dxDrawRectangle(x, y + i, w, 1, tocolor(r, g, b, alpha * 0.95), false)
-    end
-
-    -- Accent line
-    for i = 0, 3 do
-        local progress = i / 3
-        local a = (1 - progress) * alpha
-        dxDrawRectangle(x, y + h - 4 + i, w, 1, tocolor(41, 128, 185, a * 0.5), false)
-    end
-
-    -- Server logo/name with glow effect
-    local titleX = x + 35
-    local titleY = y + h * 0.35
-
-    -- Glow behind text
-    dxDrawText("JEBIGA", titleX + 2, titleY + 2, titleX + 400, titleY + 50, tocolor(41, 128, 185, alpha * 0.3), 3.0 * scale, "bankgothic", "left", "center", false, false, false)
-    dxDrawText("JEBIGA", titleX, titleY, titleX + 400, titleY + 50, tocolor(255, 255, 255, alpha), 3.0 * scale, "bankgothic", "left", "center", false, false, false)
-
-    -- GAMING text with purple accent
-    dxDrawText("GAMING", titleX + 195 * scale, titleY, titleX + 500, titleY + 50, tocolor(155, 89, 182, alpha), 3.0 * scale, "bankgothic", "left", "center", false, false, false)
-
-    -- Subtitle
-    dxDrawText("SELECT YOUR GAMEMODE", titleX, y + h * 0.7, titleX + 500, y + h, tocolor(160, 170, 180, alpha * 0.8), 1.0 * scale, "default", "left", "center", false, false, false)
-
-    -- Online players counter with icon
-    local totalPlayers = 0
-    for _, count in pairs(playerCounts) do
-        totalPlayers = totalPlayers + count
-    end
-
-    local onlineX = x + w - 280
-    dxDrawRectangle(onlineX, y + 25, 180, 40 * scale, tocolor(46, 204, 113, alpha * 0.15), false)
-    dxDrawRectangle(onlineX, y + 25, 3, 40 * scale, tocolor(46, 204, 113, alpha), false)
-    dxDrawText("● " .. totalPlayers .. " ONLINE", onlineX + 15, y + 25, onlineX + 180, y + 25 + 40 * scale, tocolor(46, 204, 113, alpha), 1.0 * scale, "default-bold", "left", "center", false, false, false)
-
-    -- Close button
-    local closeSize = 45 * scale
-    local closeX = x + w - closeSize - 20
-    local closeY = y + (h - closeSize) / 2
-
-    local closeHover = isMouseOver(closeX, closeY, closeSize, closeSize)
-    local closeBgColor = closeHover and {231, 76, 60} or {60, 65, 75}
-
-    -- Close button background
-    dxDrawRectangle(closeX, closeY, closeSize, closeSize, tocolor(closeBgColor[1], closeBgColor[2], closeBgColor[3], alpha), false)
-    dxDrawRectangle(closeX, closeY, closeSize, 2, tocolor(255, 255, 255, alpha * 0.1), false)
-
-    -- X icon
-    local iconAlpha = closeHover and alpha or (alpha * 0.8)
-    dxDrawText("✕", closeX, closeY, closeX + closeSize, closeY + closeSize, tocolor(255, 255, 255, iconAlpha), 1.4 * scale, "default-bold", "center", "center", false, false, false)
-
-    if closeHover and getKeyState("mouse1") and not clickCooldown then
-        clickCooldown = true
-        setTimer(function() clickCooldown = false end, 200, 1)
-        hideLobby()
-    end
-end
-
-function drawGamemodeGrid(x, y, w, h, alpha)
-    local cardW = 280 * scale
-    local cardH = 340 * scale
-    local padding = 25 * scale
-    local cardsPerRow = math.floor((w + padding) / (cardW + padding))
-
-    -- Recalculate card width to fill space nicely
-    if cardsPerRow > 0 then
-        cardW = (w - (cardsPerRow - 1) * padding) / cardsPerRow
-    end
-
-    local col = 0
-    local row = 0
-
-    for i, gmKey in ipairs(gamemodeOrder) do
-        local gm = Config.Gamemodes[gmKey]
-        if gm and gm.enabled then
-            local cardX = x + col * (cardW + padding)
-            local cardY = y + row * (cardH + padding) - scrollOffset
-
-            -- Only draw if visible
-            if cardY + cardH > y - 50 and cardY < y + h + 50 then
-                local anim = cardAnimations[gmKey] or { offset = 0, alpha = 255 }
-                drawGamemodeCard(gmKey, gm, cardX, cardY + anim.offset, cardW, cardH, anim.alpha * (alpha/255))
-            end
-
-            col = col + 1
-            if col >= cardsPerRow then
-                col = 0
-                row = row + 1
-            end
-        end
-    end
-
-    -- Calculate max scroll
-    local totalRows = math.ceil(#gamemodeOrder / cardsPerRow)
-    maxScroll = math.max(0, totalRows * (cardH + padding) - h + 50)
-end
-
-function drawGamemodeCard(gmKey, gm, x, y, w, h, alpha)
-    if alpha <= 0 then return end
-
-    local isHover = isMouseOver(x, y, w, h)
-
-    -- Get gamemode color
-    local gmColor = gm.color or {100, 100, 100}
-    local gmGradient = gm.gradient or gmColor
-
-    -- Hover effects
-    local hoverOffset = isHover and -8 or 0
-    local elevation = isHover and 12 or 4
-    y = y + hoverOffset
-
-    -- Drop shadow
-    for i = elevation, 1, -1 do
-        local shadowAlpha = (40 / i) * (alpha/255)
-        if isHover then
-            -- Colored shadow on hover
-            dxDrawRectangle(x + i*2, y + i*2, w, h, tocolor(gmColor[1], gmColor[2], gmColor[3], shadowAlpha * 0.5), false)
-        else
-            dxDrawRectangle(x + i*2, y + i*2, w, h, tocolor(0, 0, 0, shadowAlpha), false)
-        end
-    end
-
-    -- Glow effect on hover
-    if isHover then
-        for i = 4, 1, -1 do
-            dxDrawRectangle(x - i, y - i, w + i*2, h + i*2, tocolor(gmColor[1], gmColor[2], gmColor[3], (30/i) * (alpha/255)), false)
-        end
-    end
-
-    -- Card background
-    local bgColor = isHover and {30, 33, 42} or {22, 25, 32}
-    dxDrawRectangle(x, y, w, h, tocolor(bgColor[1], bgColor[2], bgColor[3], alpha), false)
-
-    -- Top colored accent bar with gradient
-    local accentHeight = 5
-    for i = 0, w do
-        local progress = i / w
-        local r = math.floor(gmColor[1] + (gmGradient[1] - gmColor[1]) * progress)
-        local g = math.floor(gmColor[2] + (gmGradient[2] - gmColor[2]) * progress)
-        local b = math.floor(gmColor[3] + (gmGradient[3] - gmColor[3]) * progress)
-        dxDrawRectangle(x + i, y, 1, accentHeight, tocolor(r, g, b, alpha), false)
-    end
-
-    -- Glow under accent
-    for i = 0, 20 do
-        local glowAlpha = (20 - i) * 3 * (alpha/255)
-        dxDrawRectangle(x, y + accentHeight + i, w, 1, tocolor(gmColor[1], gmColor[2], gmColor[3], glowAlpha), false)
-    end
-
-    -- Icon area
-    local iconSize = 90 * scale
-    local iconX = x + (w - iconSize) / 2
-    local iconY = y + 35 * scale
-
-    -- Icon background with gradient
-    for i = 0, iconSize do
-        local progress = i / iconSize
-        local iconBgAlpha = (40 - progress * 25) * (alpha/255)
-        dxDrawRectangle(iconX, iconY + i, iconSize, 1, tocolor(gmColor[1], gmColor[2], gmColor[3], iconBgAlpha), false)
-    end
-
-    -- Icon border
-    dxDrawRectangle(iconX, iconY, iconSize, 1, tocolor(gmColor[1], gmColor[2], gmColor[3], alpha * 0.3), false)
-    dxDrawRectangle(iconX, iconY + iconSize - 1, iconSize, 1, tocolor(gmColor[1], gmColor[2], gmColor[3], alpha * 0.1), false)
-
-    -- Gamemode symbol
-    local symbol = getGamemodeSymbol(gm.shortName)
-    -- Shadow
-    dxDrawText(symbol, iconX + 2, iconY + 2, iconX + iconSize, iconY + iconSize, tocolor(0, 0, 0, alpha * 0.5), 3.0 * scale, "pricedown", "center", "center", false, false, false)
-    -- Main
-    dxDrawText(symbol, iconX, iconY, iconX + iconSize, iconY + iconSize, tocolor(gmColor[1], gmColor[2], gmColor[3], alpha), 3.0 * scale, "pricedown", "center", "center", false, false, false)
-
-    -- Gamemode name
-    local nameY = iconY + iconSize + 20 * scale
-    dxDrawText(gm.name:upper(), x, nameY, x + w, nameY + 30 * scale, tocolor(255, 255, 255, alpha), 1.35 * scale, "default-bold", "center", "center", false, false, false)
-
-    -- Description
-    local descY = nameY + 35 * scale
-    dxDrawText(gm.description, x + 15, descY, x + w - 15, descY + 55 * scale, tocolor(140, 150, 160, alpha * 0.85), 0.9 * scale, "default", "center", "top", true, true, false)
-
-    -- Stats section at bottom
-    local statsHeight = 85 * scale
-    local statsY = y + h - statsHeight
-
-    -- Stats background
-    dxDrawRectangle(x, statsY, w, statsHeight, tocolor(15, 17, 22, alpha * 0.95), false)
-    dxDrawRectangle(x, statsY, w, 1, tocolor(50, 55, 65, alpha * 0.5), false)
-
-    -- Players stat
-    local players = playerCounts[gmKey] or 0
-    local playerColor = players > 0 and {46, 204, 113} or {100, 110, 120}
-    dxDrawText("PLAYERS", x + 20, statsY + 12, x + w/2 - 10, statsY + 30 * scale, tocolor(80, 90, 100, alpha), 0.75 * scale, "default", "left", "center", false, false, false)
-    dxDrawText(tostring(players), x + 20, statsY + 32 * scale, x + w/2 - 10, statsY + 55 * scale, tocolor(playerColor[1], playerColor[2], playerColor[3], alpha), 1.4 * scale, "default-bold", "left", "center", false, false, false)
-
-    -- Maps stat
-    local maps = mapCounts[gmKey] or 0
-    dxDrawText("MAPS", x + w/2 + 10, statsY + 12, x + w - 20, statsY + 30 * scale, tocolor(80, 90, 100, alpha), 0.75 * scale, "default", "right", "center", false, false, false)
-    dxDrawText(tostring(maps), x + w/2 + 10, statsY + 32 * scale, x + w - 20, statsY + 55 * scale, tocolor(255, 255, 255, alpha), 1.4 * scale, "default-bold", "right", "center", false, false, false)
-
-    -- Join button (visible on hover)
-    local btnY = statsY + 55 * scale
-    local btnH = 28 * scale
-    local btnAlpha = isHover and alpha or (alpha * 0.4)
-
-    -- Button gradient
-    for i = 0, btnH do
-        local progress = i / btnH
-        local r = math.floor(gmColor[1] * (1 - progress * 0.25))
-        local g = math.floor(gmColor[2] * (1 - progress * 0.25))
-        local b = math.floor(gmColor[3] * (1 - progress * 0.25))
-        dxDrawRectangle(x + 15, btnY + i, w - 30, 1, tocolor(r, g, b, btnAlpha), false)
-    end
-
-    local btnText = isHover and "► CLICK TO JOIN" or "JOIN"
-    dxDrawText(btnText, x + 15, btnY, x + w - 15, btnY + btnH, tocolor(255, 255, 255, btnAlpha), 0.95 * scale, "default-bold", "center", "center", false, false, false)
-
-    -- Handle click
-    if isHover and getKeyState("mouse1") and not clickCooldown then
-        clickCooldown = true
-        setTimer(function() clickCooldown = false end, 400, 1)
-        joinGamemode(gmKey)
-    end
-end
-
-function drawFooter(x, y, w, h, alpha)
-    -- Footer background
-    dxDrawRectangle(x, y, w, h, tocolor(12, 12, 16, alpha), false)
-    dxDrawRectangle(x, y, w, 1, tocolor(40, 45, 55, alpha * 0.5), false)
-
-    -- Help text
-    dxDrawText("F1 - Toggle Lobby  │  Click on a gamemode to teleport  │  Mouse Wheel - Scroll", x + 25, y, x + w - 150, y + h, tocolor(80, 90, 100, alpha * 0.8), 0.9 * scale, "default", "left", "center", false, false, false)
-
-    -- Version and branding
-    dxDrawText("JEBIGA v" .. (Config.ServerVersion or "2.0.0"), x + w - 150, y, x + w - 25, y + h, tocolor(60, 70, 80, alpha * 0.6), 0.85 * scale, "default", "right", "center", false, false, false)
 end
 
 -- ============================================
--- SCROLL HANDLING
+-- GAMEMODE GRID
+-- ============================================
+
+function drawGamemodeGrid(alpha)
+    local totalW = screenW - gridStartX * 2
+    local totalH = screenH - gridStartY - 60 * scale
+
+    local cardW = (totalW - (cols - 1) * cardPadding) / cols
+    local cardH = (totalH - (rows - 1) * cardPadding) / rows
+
+    for i, gm in ipairs(gamemodes) do
+        if i > cols * rows then break end
+
+        local col = (i - 1) % cols
+        local row = math.floor((i - 1) / cols)
+
+        local x = gridStartX + col * (cardW + cardPadding)
+        local y = gridStartY + row * (cardH + cardPadding)
+
+        drawGamemodeCard(gm, x, y, cardW, cardH, alpha)
+    end
+end
+
+function drawGamemodeCard(gm, x, y, w, h, alpha)
+    local isHover = isMouseOver(x, y, w, h) and not gm.comingSoon
+    local isComingSoon = gm.comingSoon
+
+    if isHover then
+        hoverGamemode = gm.id
+    end
+
+    -- Colors
+    local bgColor = isComingSoon and {45, 45, 50} or (isHover and {55, 60, 70} or {38, 42, 50})
+
+    -- Hover glow/shadow
+    if isHover and not isComingSoon then
+        dxDrawRectangle(x + 3, y + 3, w, h, tocolor(gm.color[1], gm.color[2], gm.color[3], alpha * 0.25))
+    end
+
+    -- Main background
+    dxDrawRectangle(x, y, w, h, tocolor(bgColor[1], bgColor[2], bgColor[3], alpha))
+
+    -- Bottom color bar
+    if not isComingSoon then
+        local barH = 3
+        local barAlpha = isHover and 1 or 0.5
+        dxDrawRectangle(x, y + h - barH, w, barH,
+            tocolor(gm.color[1], gm.color[2], gm.color[3], alpha * barAlpha))
+    end
+
+    -- Image area (gradient simulation)
+    local imgH = h * 0.6
+    if not isComingSoon then
+        for i = 0, imgH do
+            local progress = i / imgH
+            local intensity = 0.15 + progress * 0.15
+            dxDrawRectangle(x, y + i, w, 1,
+                tocolor(gm.color[1] * intensity, gm.color[2] * intensity, gm.color[3] * intensity, alpha * 0.8))
+        end
+    end
+
+    -- Gamemode name
+    local nameY = y + imgH + 8 * scale
+    local nameColor = isComingSoon and {100, 100, 100} or {255, 255, 255}
+    dxDrawText(gm.name, x, nameY, x + w, nameY + 22 * scale,
+        tocolor(nameColor[1], nameColor[2], nameColor[3], alpha),
+        0.95 * scale, "default-bold", "center", "center")
+
+    -- Player count
+    if not isComingSoon and not gm.isGarage then
+        local players = playerCounts[gm.id] or 0
+        local countText = players .. "/" .. gm.maxPlayers
+        local countY = y + h - 25 * scale
+
+        dxDrawText(countText, x, countY, x + w, countY + 18 * scale,
+            tocolor(140, 140, 140, alpha), 0.8 * scale, "default", "center", "center")
+    end
+
+    -- Map count (corner)
+    if not isComingSoon and not gm.isGarage then
+        local maps = mapCounts[gm.id] or 0
+        if maps > 0 then
+            dxDrawText(tostring(maps), x + w - 22, y + 5, x + w - 5, y + 20,
+                tocolor(255, 255, 255, alpha * 0.5), 0.75 * scale, "default", "right", "top")
+        end
+    end
+
+    -- Click
+    if isHover and not isComingSoon and getKeyState("mouse1") and not clickCooldown then
+        clickCooldown = true
+        setTimer(function() clickCooldown = false end, 500, 1)
+
+        if gm.isGarage then
+            triggerServerEvent("weevil:garage:requestOpen", localPlayer)
+        else
+            playSoundFrontEnd(40)
+            triggerServerEvent("jebiga:lobby:joinGamemode", localPlayer, gm.id)
+            setTimer(hideLobby, 300, 1)
+        end
+    end
+end
+
+-- ============================================
+-- ONLINE COUNTER
+-- ============================================
+
+function drawOnlineCounter(alpha)
+    local total = getTotalOnline()
+    local text = total .. " players online"
+    local y = screenH - 45 * scale
+
+    dxDrawText(text, 0, y, screenW, y + 25 * scale,
+        tocolor(140, 140, 140, alpha), 0.95 * scale, "default", "center", "center")
+end
+
+-- ============================================
+-- BLOCK INPUT WHEN IN LOBBY
 -- ============================================
 
 addEventHandler("onClientKey", root, function(key, state)
-    if not isLobbyOpen then return end
+    if not isLobbyVisible then return end
 
-    if key == "mouse_wheel_up" and state then
-        scrollOffset = math.max(0, scrollOffset - 60)
-    elseif key == "mouse_wheel_down" and state then
-        scrollOffset = math.min(maxScroll, scrollOffset + 60)
-    elseif key == "escape" and state then
-        hideLobby()
+    -- Block movement
+    local blocked = {
+        "w", "a", "s", "d",
+        "arrow_u", "arrow_d", "arrow_l", "arrow_r",
+        "space", "lshift", "lctrl"
+    }
+
+    for _, k in ipairs(blocked) do
+        if key == k then
+            cancelEvent()
+            return
+        end
+    end
+
+    -- ESC doesn't close lobby (player must select gamemode)
+    if key == "escape" and state then
         cancelEvent()
     end
 end)
@@ -496,7 +367,7 @@ end)
 -- ============================================
 
 function isLobbyGUIVisible()
-    return isLobbyOpen
+    return isLobbyVisible
 end
 
 function showLobbyGUI()

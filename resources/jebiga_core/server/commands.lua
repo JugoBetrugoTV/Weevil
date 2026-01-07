@@ -416,8 +416,8 @@ addCommandHandler("setadmin", function(player, cmd, targetName, levelStr)
     if data then
         data.adminLevel = level
 
-        -- Update database
-        dbExec(connection, "UPDATE accounts SET admin_level = ? WHERE id = ?", level, data.accountId)
+        -- Update database (use execute function from database module)
+        execute("UPDATE accounts SET admin_level = ? WHERE id = ?", level, data.accountId)
 
         local levelName = level > 0 and Config.AdminLevels[level].name or "Player"
         outputChatBox("#00FF00[Admin] #FFFFFFYou set " .. getPlayerName(target) .. " to " .. levelName, player, 255, 255, 255, true)
@@ -517,7 +517,7 @@ function logAdminAction(admin, action, target, details)
     local adminData = getCachedPlayerData(admin)
     local targetData = target and getCachedPlayerData(target)
 
-    dbExec(connection, [[
+    execute([[
         INSERT INTO admin_log (admin_id, action, target_id, details)
         VALUES (?, ?, ?, ?)
     ]],
@@ -539,7 +539,7 @@ function banPlayer(player, admin, reason, hours)
         banExpires = now + (hours * 3600)
     end
 
-    dbExec(connection, [[
+    execute([[
         UPDATE accounts SET banned = 1, ban_reason = ?, ban_expires = ?
         WHERE id = ?
     ]], reason, banExpires and os.date("%Y-%m-%d %H:%M:%S", banExpires) or nil, data.accountId)

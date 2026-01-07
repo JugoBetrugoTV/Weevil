@@ -386,12 +386,45 @@ addCommandHandler("maps", function(player, cmd, gamemode)
 end)
 
 -- ============================================
--- PERIODIC UPDATES
+-- PERIODIC UPDATES (OPTIMIZED)
 -- ============================================
 
+-- Cache for change detection
+local lastMapCounts = {}
+local lastPlayerCounts = {}
+
+-- Check if counts have changed
+local function hasDataChanged(newMapCounts, newPlayerCounts)
+    -- Check map counts
+    for k, v in pairs(newMapCounts) do
+        if lastMapCounts[k] ~= v then return true end
+    end
+    for k, v in pairs(lastMapCounts) do
+        if newMapCounts[k] ~= v then return true end
+    end
+    -- Check player counts
+    for k, v in pairs(newPlayerCounts) do
+        if lastPlayerCounts[k] ~= v then return true end
+    end
+    for k, v in pairs(lastPlayerCounts) do
+        if newPlayerCounts[k] ~= v then return true end
+    end
+    return false
+end
+
+-- Only broadcast if data changed (reduces network traffic)
 setTimer(function()
-    broadcastLobbyData()
-end, 10000, 0) -- Update every 10 seconds
+    local newMapCounts = getMapCounts()
+    local newPlayerCounts = getPlayerCounts()
+
+    if hasDataChanged(newMapCounts, newPlayerCounts) then
+        -- Update cache
+        lastMapCounts = newMapCounts
+        lastPlayerCounts = newPlayerCounts
+        -- Broadcast to lobby players
+        broadcastLobbyData()
+    end
+end, 10000, 0) -- Check every 10 seconds
 
 -- ============================================
 -- EXPORTS

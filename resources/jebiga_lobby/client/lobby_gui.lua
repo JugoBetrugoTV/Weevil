@@ -12,6 +12,7 @@ local mapCounts = {}
 local playerCounts = {}
 local hoverGamemode = nil
 local clickCooldown = false
+local mouseDown = false  -- Track mouse state via event instead of getKeyState
 
 -- Animation
 local fadeAlpha = 0
@@ -307,9 +308,10 @@ function drawGamemodeCard(gm, x, y, w, h, alpha)
         end
     end
 
-    -- Click
-    if isHover and not isComingSoon and getKeyState("mouse1") and not clickCooldown then
+    -- Click detection using event-tracked mouseDown (MTA 1.6 compatible)
+    if isHover and not isComingSoon and mouseDown and not clickCooldown then
         clickCooldown = true
+        mouseDown = false  -- Reset after handling
         setTimer(function() clickCooldown = false end, 500, 1)
 
         if gm.isGarage then
@@ -321,6 +323,14 @@ function drawGamemodeCard(gm, x, y, w, h, alpha)
         end
     end
 end
+
+-- Mouse click event handler (MTA 1.6 compatible - replaces getKeyState in render)
+addEventHandler("onClientClick", root, function(button, state)
+    if not isLobbyVisible then return end
+    if button == "left" then
+        mouseDown = (state == "down")
+    end
+end)
 
 -- ============================================
 -- ONLINE COUNTER

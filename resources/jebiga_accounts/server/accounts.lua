@@ -271,8 +271,24 @@ end
 
 -- Hash password using SHA256 with salt
 function hashPassword(password)
-    local salt = md5(tostring(getTickCount()) .. tostring(math.random(100000, 999999)))
-    local hash = sha256(salt .. password)
+    -- MTA 1.6 compatibility: check if hash functions exist
+    if not md5 or not sha256 then
+        outputDebugString("[Jebiga Accounts] ERROR: Hash functions not available!", 1)
+        return nil
+    end
+
+    local success, salt = pcall(md5, tostring(getTickCount()) .. tostring(math.random(100000, 999999)))
+    if not success or not salt then
+        outputDebugString("[Jebiga Accounts] ERROR: md5 hash failed!", 1)
+        return nil
+    end
+
+    local success2, hash = pcall(sha256, salt .. password)
+    if not success2 or not hash then
+        outputDebugString("[Jebiga Accounts] ERROR: sha256 hash failed!", 1)
+        return nil
+    end
+
     return salt .. ":" .. hash
 end
 
@@ -280,15 +296,25 @@ end
 function verifyPassword(password, storedHash)
     if not storedHash then return false end
 
+    -- MTA 1.6 compatibility: check if hash functions exist
+    if not md5 or not sha256 then
+        outputDebugString("[Jebiga Accounts] ERROR: Hash functions not available!", 1)
+        return false
+    end
+
     local parts = split(storedHash, ":")
     if #parts ~= 2 then
         -- Legacy MD5 hash
-        return md5(password) == storedHash
+        local success, legacyHash = pcall(md5, password)
+        if not success then return false end
+        return legacyHash == storedHash
     end
 
     local salt = parts[1]
     local hash = parts[2]
-    return sha256(salt .. password) == hash
+    local success, computedHash = pcall(sha256, salt .. password)
+    if not success then return false end
+    return computedHash == hash
 end
 
 -- Split string helper
@@ -560,6 +586,10 @@ addCommandHandler("changepass", function(player, cmd, oldPass, newPass)
     end
 
     local accountData = loggedInPlayers[player]
+    if not accountData then
+        outputChatBox("#FF0000[Jebiga] #FFFFFFSession error. Please relog.", player, 255, 255, 255, true)
+        return
+    end
 
     -- Verify old password
     local account = dbFetchOne([[

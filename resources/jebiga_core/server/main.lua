@@ -284,9 +284,11 @@ function loadRandomMapForGamemode(gamemode)
 
     -- Teleport all players to new spawnpoints
     for _, player in ipairs(arena.players) do
-        local sp = getArenaSpawnpoint(gamemode)
-        spawnPlayer(player, sp.x, sp.y, sp.z, sp.rot or 0, cfg.skinId or 0)
-        setCameraTarget(player, player)
+        if isElement(player) then
+            local sp = getArenaSpawnpoint(gamemode)
+            spawnPlayer(player, sp.x, sp.y, sp.z, sp.rot or 0, cfg.skinId or 0)
+            setCameraTarget(player, player)
+        end
     end
 
     -- Start countdown
@@ -347,8 +349,10 @@ function startArenaCountdown(gamemode)
 
     -- Freeze players during countdown
     for _, player in ipairs(arena.players) do
-        setElementFrozen(player, true)
-        triggerClientEvent(player, "jebiga:countdown:start", player, 5)
+        if isElement(player) then
+            setElementFrozen(player, true)
+            triggerClientEvent(player, "jebiga:countdown:start", player, 5)
+        end
     end
 
     -- Countdown from 5

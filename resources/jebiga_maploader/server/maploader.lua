@@ -38,13 +38,16 @@ function loadMapResource(mapResourceName, dimension)
         return false
     end
 
-    -- Start the resource if not running
-    if getResourceState(mapRes) ~= "running" then
-        local started = startResource(mapRes)
-        if not started then
-            outputDebugString("[MapLoader] Failed to start resource: " .. mapResourceName, 2)
-            return false
-        end
+    -- MTA 1.6 FIX: Force restart the resource to ensure scripts (like music.lua) run fresh
+    -- This is critical for maps with their own client scripts
+    if getResourceState(mapRes) == "running" then
+        stopResource(mapRes)
+    end
+
+    local started = startResource(mapRes)
+    if not started then
+        outputDebugString("[MapLoader] Failed to start resource: " .. mapResourceName, 2)
+        return false
     end
 
     currentMapResource = mapRes
@@ -54,6 +57,14 @@ function loadMapResource(mapResourceName, dimension)
     local success = parseMapFile(mapRes, dimension)
 
     if success then
+        -- Detect music files in the map resource (for maps without their own music.lua)
+        local musicFile = detectMapMusicFile(mapRes)
+        if musicFile then
+            mapSettings.musicFile = musicFile
+            mapSettings.musicResource = mapResourceName
+            outputDebugString("[MapLoader] Detected music file: " .. musicFile)
+        end
+
         outputDebugString("[MapLoader] Loaded map: " .. mapResourceName .. " (" .. #spawnPoints .. " spawns, " .. #checkpoints .. " checkpoints)")
 
         -- Notify clients
@@ -72,6 +83,66 @@ function loadMapResource(mapResourceName, dimension)
     end
 
     return false
+end
+
+-- ============================================
+-- MUSIC FILE DETECTION (MTA 1.6)
+-- ============================================
+
+-- Detect music files in map resource
+function detectMapMusicFile(mapRes)
+    local resName = getResourceName(mapRes)
+    local meta = xmlLoadFile(":" .. resName .. "/meta.xml")
+
+    if not meta then return nil end
+
+    local musicFile = nil
+    local hasOwnMusicScript = false
+    local children = xmlNodeGetChildren(meta)
+
+    for _, child in ipairs(children) do
+        local nodeName = xmlNodeGetName(child)
+
+        -- Check for script nodes that handle music
+        if nodeName == "script" then
+            local src = xmlNodeGetAttribute(child, "src")
+            local scriptType = xmlNodeGetAttribute(child, "type")
+            if src and scriptType == "client" then
+                local lower = src:lower()
+                if lower:find("music") or lower:find("sound") or lower:find("audio") then
+                    -- Map has its own music script - let it handle music
+                    hasOwnMusicScript = true
+                    outputDebugString("[MapLoader] Map has own music script: " .. src)
+                end
+            end
+        end
+
+        -- Check for file nodes with music extensions
+        if nodeName == "file" then
+            local src = xmlNodeGetAttribute(child, "src")
+            if src then
+                local lower = src:lower()
+                if lower:find("%.mp3$") or lower:find("%.ogg$") or lower:find("%.wav$") then
+                    -- Found a music file
+                    musicFile = src
+                end
+            end
+        end
+    end
+
+    xmlUnloadFile(meta)
+
+    -- If map has its own music script, don't override with our system
+    if hasOwnMusicScript then
+        return nil
+    end
+
+    -- Return music file path for maps that don't have their own music script
+    if musicFile then
+        return ":" .. resName .. "/" .. musicFile
+    end
+
+    return nil
 end
 
 function parseMapFile(mapRes, dimension)

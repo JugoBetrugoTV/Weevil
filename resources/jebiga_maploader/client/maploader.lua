@@ -44,12 +44,17 @@ addEventHandler("jebiga:maploader:mapLoaded", root, function(mapData)
         updateCheckpointBlip(checkpoints[1])
     end
 
-    -- Handle map music
+    -- Handle map music (MTA 1.6 compatible)
     stopMapMusic()
     if mapMusicEnabled and mapData.settings then
-        local musicUrl = mapData.settings.musicUrl or mapData.settings.music
+        -- Priority: musicUrl > music > musicFile (detected from resource)
+        local musicUrl = mapData.settings.musicUrl or mapData.settings.music or mapData.settings.musicFile
         if musicUrl and musicUrl ~= "" then
-            playMapMusic(musicUrl, mapData.settings.musicVolume or 0.5)
+            local volume = mapData.settings.musicVolume or 0.5
+            -- Delay slightly to ensure map resource is fully loaded on client
+            setTimer(function()
+                playMapMusic(musicUrl, volume)
+            end, 500, 1)
         end
     end
 
@@ -288,7 +293,7 @@ function playLocalSound(path)
 end
 
 -- ============================================
--- MAP MUSIC
+-- MAP MUSIC (MTA 1.6 COMPATIBLE)
 -- ============================================
 
 function playMapMusic(url, volume)
@@ -298,20 +303,42 @@ function playMapMusic(url, volume)
 
     volume = volume or 0.5
 
-    -- Check if it's a URL or a local file path
+    -- MTA 1.6: Use playSound with looping disabled, then set loop manually
+    local sound = nil
+
     if url:find("://") then
-        -- It's a URL (http:// or https://)
-        currentMapMusic = playSound(url, false)
+        -- It's a URL (http:// or https://) - stream it
+        sound = playSound(url, false)
+    elseif url:sub(1, 1) == ":" then
+        -- It's a resource path (e.g., :mapname/music.mp3)
+        sound = playSound(url, false)
     else
-        -- It's a local file - try to load from map resource
-        currentMapMusic = playSound(url, false)
+        -- It's a relative path - try to play directly
+        sound = playSound(url, false)
     end
 
-    if currentMapMusic and isElement(currentMapMusic) then
+    if sound and isElement(sound) then
+        currentMapMusic = sound
         setSoundVolume(currentMapMusic, volume)
         setSoundLooped(currentMapMusic, true)
         outputDebugString("[MapLoader] Playing map music: " .. url)
     else
+        -- Retry with common variations (MTA 1.6 fix)
+        outputDebugString("[MapLoader] First attempt failed for: " .. url .. ", trying alternatives...", 2)
+
+        -- If it was a resource path, try without the leading colon
+        if url:sub(1, 1) == ":" then
+            local altUrl = url:sub(2) -- Remove leading :
+            sound = playSound(altUrl, false)
+            if sound and isElement(sound) then
+                currentMapMusic = sound
+                setSoundVolume(currentMapMusic, volume)
+                setSoundLooped(currentMapMusic, true)
+                outputDebugString("[MapLoader] Playing map music (alt): " .. altUrl)
+                return
+            end
+        end
+
         outputDebugString("[MapLoader] Failed to load map music: " .. url, 2)
     end
 end

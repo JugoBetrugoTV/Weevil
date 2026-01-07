@@ -4,6 +4,35 @@
 ]]
 
 -- ============================================
+-- DEFAULT SETTINGS
+-- ============================================
+
+local DefaultSettings = {
+    hud = true,
+    speedometer = true,
+    nametags = true,
+    nametagHealth = true,
+    radar = true,
+    killMessages = true,
+    sounds = true,
+    music = true,
+    musicVolume = 50,
+    soundVolume = 80,
+    autoRespawn = true,
+    showFPS = false,
+    showPing = true,
+    chatTimestamps = false,
+    chatFilter = true,
+    pmNotifications = true,
+    shaders = true,
+    particles = true,
+    neonLights = true,
+    showOnlineStatus = true,
+    allowPM = true,
+    showLocation = true
+}
+
+-- ============================================
 -- DATABASE INTEGRATION
 -- ============================================
 

@@ -302,8 +302,16 @@ function drawGamemodeInfo()
     dxDrawText(gm.name:upper(), x + 15, y + 5, x + w - 10, y + 30,
         tocolor(255, 255, 255, 255), 1.1 * scale, "default-bold", "left", "center", false, false, false)
 
-    -- Player count
-    local playerCount = 0 -- TODO: Get actual count
+    -- Player count - get players in same gamemode
+    local playerCount = 0
+    local myArena = getElementData(localPlayer, "jebiga:arena")
+    for _, player in ipairs(getElementsByType("player")) do
+        local theirGamemode = getElementData(player, "jebiga:currentGamemode")
+        local theirArena = getElementData(player, "jebiga:arena")
+        if theirGamemode == gamemode and (not myArena or theirArena == myArena) then
+            playerCount = playerCount + 1
+        end
+    end
     dxDrawText(playerCount .. " players", x + 15, y + 28, x + w - 10, y + h - 5,
         tocolor(colors.textMuted[1], colors.textMuted[2], colors.textMuted[3], 200), 0.8 * scale, "default", "left", "center", false, false, false)
 end
@@ -346,15 +354,31 @@ end
 -- HELPER FUNCTIONS
 -- ============================================
 
+-- Cache for circle points to avoid recalculating every frame
+local circleCache = {}
+
 function drawCircle(x, y, radius, segments, color)
-    local points = {}
-    for i = 0, segments do
-        local angle = math.rad(i * 360 / segments)
-        table.insert(points, {x + math.cos(angle) * radius, y + math.sin(angle) * radius})
+    -- Create cache key
+    local cacheKey = string.format("%d_%d", radius, segments)
+
+    -- Generate points only once per radius/segments combo
+    if not circleCache[cacheKey] then
+        local points = {}
+        for i = 0, segments do
+            local angle = math.rad(i * 360 / segments)
+            table.insert(points, {math.cos(angle), math.sin(angle)})
+        end
+        circleCache[cacheKey] = points
     end
 
+    -- Draw using cached points
+    local points = circleCache[cacheKey]
     for i = 1, #points - 1 do
-        dxDrawLine(points[i][1], points[i][2], points[i+1][1], points[i+1][2], color, 2)
+        local x1 = x + points[i][1] * radius
+        local y1 = y + points[i][2] * radius
+        local x2 = x + points[i+1][1] * radius
+        local y2 = y + points[i+1][2] * radius
+        dxDrawLine(x1, y1, x2, y2, color, 2)
     end
 end
 
@@ -388,13 +412,32 @@ function lerpColor(c1, c2, t)
     }
 end
 
+-- Cache for formatted money values
+local moneyFormatCache = {}
+local moneyFormatCacheTime = 0
+
 function formatMoney(amount)
+    -- Clear cache every 5 seconds to prevent memory buildup
+    local now = getTickCount()
+    if now - moneyFormatCacheTime > 5000 then
+        moneyFormatCache = {}
+        moneyFormatCacheTime = now
+    end
+
+    -- Check cache first
+    if moneyFormatCache[amount] then
+        return moneyFormatCache[amount]
+    end
+
+    -- Format and cache
     local formatted = tostring(amount)
     local k
     while true do
         formatted, k = string.gsub(formatted, "^(-?%d+)(%d%d%d)", '%1,%2')
         if k == 0 then break end
     end
+
+    moneyFormatCache[amount] = formatted
     return formatted
 end
 

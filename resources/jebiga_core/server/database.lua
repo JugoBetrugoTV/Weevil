@@ -618,6 +618,21 @@ function getPlayerStats(accountId, gamemode)
     end
 end
 
+-- Whitelisted column names for stats updates (prevents SQL injection)
+local allowedStatsColumns = {
+    points = true,
+    wins = true,
+    losses = true,
+    kills = true,
+    deaths = true,
+    races_finished = true,
+    best_position = true,
+    playtime = true,
+    races_won = true,
+    races_played = true,
+    checkpoints_hit = true
+}
+
 -- Update player stats
 function updatePlayerStats(accountId, gamemode, stats)
     -- First try to insert, if exists update
@@ -628,8 +643,17 @@ function updatePlayerStats(accountId, gamemode, stats)
         local values = {}
 
         for key, value in pairs(stats) do
-            table.insert(sets, key .. " = " .. key .. " + ?")
-            table.insert(values, value)
+            -- SECURITY: Only allow whitelisted column names
+            if allowedStatsColumns[key] then
+                table.insert(sets, key .. " = " .. key .. " + ?")
+                table.insert(values, value)
+            else
+                outputDebugString("[Jebiga] WARNING: Rejected invalid stats column: " .. tostring(key), 2)
+            end
+        end
+
+        if #sets == 0 then
+            return false -- No valid columns to update
         end
 
         table.insert(values, accountId)
@@ -638,17 +662,17 @@ function updatePlayerStats(accountId, gamemode, stats)
         return execute("UPDATE player_stats SET " .. table.concat(sets, ", ") .. " WHERE account_id = ? AND gamemode = ?", unpack(values))
     else
         -- Create new entry
-        stats.account_id = accountId
-        stats.gamemode = gamemode
-
-        local keys = {}
-        local placeholders = {}
-        local values = {}
+        local keys = {"account_id", "gamemode"}
+        local placeholders = {"?", "?"}
+        local values = {accountId, gamemode}
 
         for key, value in pairs(stats) do
-            table.insert(keys, key)
-            table.insert(placeholders, "?")
-            table.insert(values, value)
+            -- SECURITY: Only allow whitelisted column names
+            if allowedStatsColumns[key] then
+                table.insert(keys, key)
+                table.insert(placeholders, "?")
+                table.insert(values, value)
+            end
         end
 
         return execute("INSERT INTO player_stats (" .. table.concat(keys, ", ") .. ") VALUES (" .. table.concat(placeholders, ", ") .. ")", unpack(values))
@@ -696,3 +720,24 @@ end)
 addEventHandler("onResourceStop", resourceRoot, function()
     closeDatabase()
 end)
+
+-- =============================================
+-- GLOBAL EXPORTS
+-- =============================================
+
+_G.initDatabase = initDatabase
+_G.closeDatabase = closeDatabase
+_G.isConnected = function() return isConnected end
+_G.execute = execute
+_G.execSync = execSync
+_G.fetchOne = fetchOne
+_G.fetchAll = fetchAll
+_G.getAccountById = getAccountById
+_G.getAccountBySerial = getAccountBySerial
+_G.getAccountByUsername = getAccountByUsername
+_G.createAccount = createAccount
+_G.updateAccount = updateAccount
+_G.getPlayerStats = getPlayerStats
+_G.updatePlayerStats = updatePlayerStats
+_G.getPlayerSettings = getPlayerSettings
+_G.savePlayerSettings = savePlayerSettings

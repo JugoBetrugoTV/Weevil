@@ -14,6 +14,9 @@ local fadeIn = 0
 local scrollOffset = 0
 local maxScroll = 0
 local clickCooldown = false
+local hoverTab = nil
+local animatedProgress = 0
+local glowPulse = 0
 
 -- Settings state
 local settings = {
@@ -26,6 +29,22 @@ local settings = {
     hudScale = 1.0,
     crosshairStyle = 1,
     language = "English"
+}
+
+-- Modern color palette
+local Colors = {
+    primary = {41, 128, 185},
+    secondary = {155, 89, 182},
+    accent = {46, 204, 113},
+    gold = {241, 196, 15},
+    danger = {231, 76, 60},
+    dark = {18, 18, 24},
+    darker = {12, 12, 16},
+    panel = {25, 28, 36},
+    panelHover = {35, 40, 50},
+    text = {255, 255, 255},
+    textMuted = {120, 130, 140},
+    border = {45, 50, 60}
 }
 
 -- Panel dimensions
@@ -162,14 +181,27 @@ addEventHandler("onClientRender", root, function()
     fadeIn = math.min(fadeIn + 0.08, 1)
     local alpha = fadeIn * 255
 
-    -- Dark overlay
-    dxDrawRectangle(0, 0, screenW, screenH, tocolor(0, 0, 0, 180 * fadeIn), false)
+    -- Animate glow pulse (for accents)
+    glowPulse = glowPulse + 0.03
+    if glowPulse > math.pi * 2 then glowPulse = 0 end
+    local glowIntensity = 0.7 + math.sin(glowPulse) * 0.3
+
+    -- Dark overlay with blur effect simulation
+    dxDrawRectangle(0, 0, screenW, screenH, tocolor(0, 0, 0, 200 * fadeIn), false)
+
+    -- Outer glow effect
+    local glowSize = 15 * scale
+    for i = 1, 5 do
+        local glowAlpha = (15 / i) * fadeIn * glowIntensity
+        dxDrawRectangle(panelX - i * 3, panelY - i * 3, panelW + i * 6, panelH + i * 6,
+            tocolor(Colors.primary[1], Colors.primary[2], Colors.primary[3], glowAlpha), false)
+    end
 
     -- Main panel
     drawMainPanel(panelX, panelY, panelW, panelH, alpha)
 
     -- Header
-    drawHeader(panelX, panelY, panelW, 70 * scale, alpha)
+    drawHeader(panelX, panelY, panelW, 70 * scale, alpha, glowIntensity)
 
     -- Sidebar with tabs
     local sidebarW = 180 * scale
@@ -199,11 +231,27 @@ function drawMainPanel(x, y, w, h, alpha)
     dxDrawRectangle(x + w - 2, y, 2, h, tocolor(155, 89, 182, alpha * 0.3), false)
 end
 
-function drawHeader(x, y, w, h, alpha)
-    -- Header background
+function drawHeader(x, y, w, h, alpha, glowIntensity)
+    glowIntensity = glowIntensity or 1
+
+    -- Header background with gradient effect
     dxDrawRectangle(x, y, w, h, tocolor(22, 25, 32, alpha), false)
 
-    -- Title
+    -- Gradient overlay at top
+    for i = 0, 10 do
+        local gradAlpha = (10 - i) * 2 * (alpha / 255)
+        dxDrawRectangle(x, y + i, w, 1, tocolor(Colors.primary[1], Colors.primary[2], Colors.primary[3], gradAlpha), false)
+    end
+
+    -- Animated accent line at bottom
+    local accentWidth = w * 0.6
+    local accentX = x + (w - accentWidth) / 2
+    dxDrawRectangle(x, y + h - 3, w, 3, tocolor(Colors.border[1], Colors.border[2], Colors.border[3], alpha * 0.5), false)
+    dxDrawRectangle(accentX, y + h - 3, accentWidth, 3, tocolor(Colors.primary[1], Colors.primary[2], Colors.primary[3], alpha * glowIntensity), false)
+
+    -- Title with glow
+    local titleGlow = 30 * glowIntensity
+    dxDrawText("USER PANEL", x + 27, y + 2, x + 202, y + h + 2, tocolor(0, 0, 0, alpha * 0.5), 1.8 * scale, "bankgothic", "left", "center", false, false, false)
     dxDrawText("USER PANEL", x + 25, y, x + 200, y + h, tocolor(255, 255, 255, alpha), 1.8 * scale, "bankgothic", "left", "center", false, false, false)
 
     -- Player info in header
@@ -251,9 +299,13 @@ function drawHeader(x, y, w, h, alpha)
 end
 
 function drawSidebar(x, y, w, h, alpha)
-    -- Sidebar background
+    -- Sidebar background with subtle gradient
     dxDrawRectangle(x, y, w, h, tocolor(22, 25, 32, alpha), false)
-    dxDrawRectangle(x + w - 1, y, 1, h, tocolor(40, 45, 55, alpha * 0.5), false)
+
+    -- Subtle right border glow
+    for i = 1, 3 do
+        dxDrawRectangle(x + w - i, y, 1, h, tocolor(Colors.border[1], Colors.border[2], Colors.border[3], alpha * (0.3 / i)), false)
+    end
 
     local tabHeight = 50 * scale
     local tabY = y + 15
@@ -262,22 +314,52 @@ function drawSidebar(x, y, w, h, alpha)
         local isActive = currentTab == tab.id
         local isHover = isMouseOver(x, tabY, w - 5, tabHeight - 5)
 
-        -- Tab background
-        local bgAlpha = isActive and alpha or (isHover and alpha * 0.6 or alpha * 0.1)
-        local bgColor = isActive and {41, 128, 185} or {40, 45, 55}
-        dxDrawRectangle(x + 5, tabY, w - 10, tabHeight - 5, tocolor(bgColor[1], bgColor[2], bgColor[3], bgAlpha), false)
-
-        -- Active indicator
+        -- Smooth background transition
+        local bgR, bgG, bgB, bgA
         if isActive then
-            dxDrawRectangle(x, tabY, 4, tabHeight - 5, tocolor(46, 204, 113, alpha), false)
+            bgR, bgG, bgB = Colors.primary[1], Colors.primary[2], Colors.primary[3]
+            bgA = alpha * 0.8
+        elseif isHover then
+            bgR, bgG, bgB = Colors.panelHover[1], Colors.panelHover[2], Colors.panelHover[3]
+            bgA = alpha * 0.9
+        else
+            bgR, bgG, bgB = Colors.panel[1], Colors.panel[2], Colors.panel[3]
+            bgA = alpha * 0.3
         end
 
-        -- Icon
-        local textColor = isActive and {255, 255, 255} or (isHover and {200, 210, 220} or {120, 130, 140})
-        dxDrawText(tab.icon, x + 20, tabY, x + 45, tabY + tabHeight - 5, tocolor(textColor[1], textColor[2], textColor[3], alpha), 1.2 * scale, "default-bold", "center", "center", false, false, false)
+        -- Tab background with rounded corners effect
+        dxDrawRectangle(x + 8, tabY + 2, w - 16, tabHeight - 9, tocolor(bgR, bgG, bgB, bgA), false)
 
-        -- Tab name
-        dxDrawText(tab.name, x + 50, tabY, x + w - 10, tabY + tabHeight - 5, tocolor(textColor[1], textColor[2], textColor[3], alpha), 0.95 * scale, "default-bold", "left", "center", false, false, false)
+        -- Active indicator with glow
+        if isActive then
+            for j = 1, 3 do
+                dxDrawRectangle(x + j - 1, tabY + 2, 4 - j + 1, tabHeight - 9,
+                    tocolor(Colors.accent[1], Colors.accent[2], Colors.accent[3], alpha * (1 - j * 0.2)), false)
+            end
+        end
+
+        -- Hover highlight effect
+        if isHover and not isActive then
+            dxDrawRectangle(x + 8, tabY + 2, 3, tabHeight - 9,
+                tocolor(Colors.secondary[1], Colors.secondary[2], Colors.secondary[3], alpha * 0.6), false)
+        end
+
+        -- Icon with shadow
+        local textColor = isActive and {255, 255, 255} or (isHover and {220, 225, 230} or {100, 110, 120})
+        if isActive or isHover then
+            dxDrawText(tab.icon, x + 22, tabY + 2, x + 47, tabY + tabHeight - 3,
+                tocolor(0, 0, 0, alpha * 0.3), 1.2 * scale, "default-bold", "center", "center", false, false, false)
+        end
+        dxDrawText(tab.icon, x + 20, tabY, x + 45, tabY + tabHeight - 5,
+            tocolor(textColor[1], textColor[2], textColor[3], alpha), 1.2 * scale, "default-bold", "center", "center", false, false, false)
+
+        -- Tab name with shadow for active
+        if isActive then
+            dxDrawText(tab.name, x + 52, tabY + 2, x + w - 8, tabY + tabHeight - 3,
+                tocolor(0, 0, 0, alpha * 0.3), 0.95 * scale, "default-bold", "left", "center", false, false, false)
+        end
+        dxDrawText(tab.name, x + 50, tabY, x + w - 10, tabY + tabHeight - 5,
+            tocolor(textColor[1], textColor[2], textColor[3], alpha), 0.95 * scale, "default-bold", "left", "center", false, false, false)
 
         -- Handle click
         if isHover and getKeyState("mouse1") and not clickCooldown then
@@ -291,11 +373,20 @@ function drawSidebar(x, y, w, h, alpha)
         tabY = tabY + tabHeight
     end
 
-    -- Footer info
-    local footerY = y + h - 60 * scale
-    dxDrawRectangle(x, footerY, w, 1, tocolor(40, 45, 55, alpha * 0.5), false)
-    dxDrawText("Press U to close", x, footerY + 10, x + w, footerY + 30, tocolor(80, 90, 100, alpha * 0.7), 0.8 * scale, "default", "center", "top", false, false, false)
-    dxDrawText("Jebiga Gaming", x, footerY + 30, x + w, footerY + 50, tocolor(41, 128, 185, alpha * 0.6), 0.75 * scale, "default", "center", "top", false, false, false)
+    -- Footer with gradient separator
+    local footerY = y + h - 70 * scale
+    for i = 0, 5 do
+        dxDrawRectangle(x + 10, footerY + i, w - 20, 1,
+            tocolor(Colors.border[1], Colors.border[2], Colors.border[3], alpha * (0.5 - i * 0.08)), false)
+    end
+
+    -- Footer text with better styling
+    dxDrawText("Press U to close", x, footerY + 15, x + w, footerY + 35,
+        tocolor(Colors.textMuted[1], Colors.textMuted[2], Colors.textMuted[3], alpha * 0.6), 0.8 * scale, "default", "center", "top", false, false, false)
+
+    -- Jebiga Gaming branding with gradient text effect
+    dxDrawText("JEBIGA GAMING", x, footerY + 38, x + w, footerY + 58,
+        tocolor(Colors.primary[1], Colors.primary[2], Colors.primary[3], alpha * 0.8), 0.85 * scale, "default-bold", "center", "top", false, false, false)
 end
 
 function drawContent(x, y, w, h, alpha)
@@ -505,15 +596,31 @@ function renderStatsTab(x, y, w, h, alpha)
 end
 
 function drawStatCard(x, y, w, h, label, value, color, alpha)
-    -- Background
+    -- Card background with subtle gradient
     dxDrawRectangle(x, y, w, h, tocolor(25, 28, 36, alpha), false)
-    dxDrawRectangle(x, y, w, 3, tocolor(color[1], color[2], color[3], alpha), false)
 
-    -- Label
-    dxDrawText(label, x + 15, y + 15, x + w - 15, y + 35, tocolor(100, 110, 120, alpha), 0.75 * scale, "default-bold", "left", "center", false, false, false)
+    -- Top accent bar with glow effect
+    dxDrawRectangle(x, y, w, 4, tocolor(color[1], color[2], color[3], alpha), false)
+    for i = 1, 3 do
+        dxDrawRectangle(x, y + 4 + i, w, 1, tocolor(color[1], color[2], color[3], alpha * (0.15 / i)), false)
+    end
 
-    -- Value
+    -- Subtle border
+    dxDrawRectangle(x, y, 1, h, tocolor(Colors.border[1], Colors.border[2], Colors.border[3], alpha * 0.3), false)
+    dxDrawRectangle(x + w - 1, y, 1, h, tocolor(Colors.border[1], Colors.border[2], Colors.border[3], alpha * 0.3), false)
+    dxDrawRectangle(x, y + h - 1, w, 1, tocolor(Colors.border[1], Colors.border[2], Colors.border[3], alpha * 0.3), false)
+
+    -- Label with icon effect
+    dxDrawText(label, x + 15, y + 18, x + w - 15, y + 35, tocolor(Colors.textMuted[1], Colors.textMuted[2], Colors.textMuted[3], alpha), 0.75 * scale, "default-bold", "left", "center", false, false, false)
+
+    -- Value with shadow
+    dxDrawText(value, x + 17, y + 42, x + w - 13, y + h - 8, tocolor(0, 0, 0, alpha * 0.4), 1.5 * scale, "default-bold", "left", "center", false, false, false)
     dxDrawText(value, x + 15, y + 40, x + w - 15, y + h - 10, tocolor(color[1], color[2], color[3], alpha), 1.5 * scale, "default-bold", "left", "center", false, false, false)
+
+    -- Hover effect
+    if isMouseOver(x, y, w, h) then
+        dxDrawRectangle(x, y, w, h, tocolor(255, 255, 255, alpha * 0.03), false)
+    end
 end
 
 -- ============================================

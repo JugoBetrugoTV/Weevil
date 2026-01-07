@@ -409,6 +409,21 @@ bindKey("F8", "down", function()
     end
 end)
 
+-- M key to toggle music on/off (quick toggle without panel)
+bindKey("m", "down", function()
+    if isPlaying then
+        stopMusic()
+        exports.jebiga_core:showNotification("Music OFF", "info")
+    else
+        -- Resume last station or play first one
+        if currentStation == 0 or currentStation == #stations then
+            selectStation(1)
+        else
+            selectStation(currentStation)
+        end
+    end
+end)
+
 -- Quick volume commands
 addCommandHandler("vol", function(cmd, vol)
     vol = tonumber(vol)

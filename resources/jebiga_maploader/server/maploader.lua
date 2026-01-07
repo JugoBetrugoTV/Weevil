@@ -366,6 +366,7 @@ function parseRacePickup(node, dimension)
     local z = tonumber(xmlNodeGetAttribute(node, "posZ")) or tonumber(xmlNodeGetAttribute(node, "z")) or 0
     local pickupType = xmlNodeGetAttribute(node, "type") or "nitro"
     local respawn = tonumber(xmlNodeGetAttribute(node, "respawn")) or 30000
+    local targetVehicle = tonumber(xmlNodeGetAttribute(node, "vehicle")) or tonumber(xmlNodeGetAttribute(node, "model"))
 
     -- Create marker for race pickup
     local r, g, b = 0, 255, 255
@@ -382,6 +383,9 @@ function parseRacePickup(node, dimension)
         setElementDimension(marker, dimension)
         setElementData(marker, "jebiga:racePickupType", pickupType)
         setElementData(marker, "jebiga:respawnTime", respawn)
+        if targetVehicle then
+            setElementData(marker, "jebiga:targetVehicle", targetVehicle)
+        end
         table.insert(mapElements, marker)
     end
 end
@@ -403,6 +407,13 @@ function parseSettings(node)
                 mapSettings.ghostmode = value == "true"
             elseif name == "laps" then
                 mapSettings.laps = tonumber(value) or 1
+            -- Music settings support
+            elseif name == "music" or name == "snd" or name == "sound" then
+                mapSettings.music = value
+            elseif name == "musicurl" or name == "soundtrack" then
+                mapSettings.musicUrl = value
+            elseif name == "musicvolume" or name == "sndvolume" then
+                mapSettings.musicVolume = tonumber(value) or 0.5
             end
         end
     end
@@ -612,6 +623,28 @@ addEventHandler("onMarkerHit", root, function(hitElement, matchingDimension)
         fixVehicle(vehicle)
         setElementHealth(vehicle, 1000)
         triggerClientEvent(player, "jebiga:maploader:pickupCollected", resourceRoot, "repair")
+    elseif pickupType == "vehiclechange" then
+        -- Get target vehicle model from marker data
+        local targetVehicle = getElementData(source, "jebiga:targetVehicle")
+        if targetVehicle and vehicle then
+            local x, y, z = getElementPosition(vehicle)
+            local rx, ry, rz = getElementRotation(vehicle)
+            local vx, vy, vz = getElementVelocity(vehicle)
+
+            -- Destroy old vehicle
+            destroyElement(vehicle)
+
+            -- Create new vehicle
+            local newVehicle = createVehicle(targetVehicle, x, y, z, rx, ry, rz)
+            if newVehicle then
+                warpPedIntoVehicle(player, newVehicle)
+                setElementVelocity(newVehicle, vx, vy, vz)
+                setElementDimension(newVehicle, getElementDimension(player))
+                table.insert(mapElements, newVehicle)
+                setElementData(player, "jebiga:spawnVehicle", newVehicle)
+                triggerClientEvent(player, "jebiga:maploader:pickupCollected", resourceRoot, "vehiclechange")
+            end
+        end
     end
 
     -- Temporarily hide pickup

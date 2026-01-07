@@ -22,6 +22,10 @@ local checkpointBlip = nil
 local checkpointSound = nil
 local finishSound = nil
 
+-- Map music
+local currentMapMusic = nil
+local mapMusicEnabled = true
+
 -- ============================================
 -- MAP EVENTS
 -- ============================================
@@ -40,6 +44,15 @@ addEventHandler("jebiga:maploader:mapLoaded", root, function(mapData)
         updateCheckpointBlip(checkpoints[1])
     end
 
+    -- Handle map music
+    stopMapMusic()
+    if mapMusicEnabled and mapData.settings then
+        local musicUrl = mapData.settings.musicUrl or mapData.settings.music
+        if musicUrl and musicUrl ~= "" then
+            playMapMusic(musicUrl, mapData.settings.musicVolume or 0.5)
+        end
+    end
+
     outputChatBox("#2980B9[MAP] #FFFFFFMap loaded: " .. (mapData.name or "Unknown"), 255, 255, 255, true)
 end)
 
@@ -55,6 +68,9 @@ addEventHandler("jebiga:maploader:mapUnloaded", root, function()
         destroyElement(checkpointBlip)
         checkpointBlip = nil
     end
+
+    -- Stop map music when map unloads
+    stopMapMusic()
 end)
 
 addEvent("jebiga:maploader:updateCheckpoint", true)
@@ -93,6 +109,8 @@ addEventHandler("jebiga:maploader:pickupCollected", root, function(pickupType)
         outputChatBox("#00FF00[PICKUP] #FFFFFFNitro collected!", 255, 255, 255, true)
     elseif pickupType == "repair" then
         outputChatBox("#FFFF00[PICKUP] #FFFFFFVehicle repaired!", 255, 255, 255, true)
+    elseif pickupType == "vehiclechange" then
+        outputChatBox("#FF00FF[PICKUP] #FFFFFFVehicle changed!", 255, 255, 255, true)
     end
 end)
 
@@ -260,7 +278,7 @@ addEventHandler("onClientRender", root, renderCheckpointArrow)
 -- SOUNDS
 -- ============================================
 
-function playSound(path)
+function playLocalSound(path)
     -- Try to play from this resource first
     local sound = playSound(path)
     if not sound then
@@ -268,6 +286,55 @@ function playSound(path)
         -- MTA doesn't have built-in beep, so we skip if file missing
     end
 end
+
+-- ============================================
+-- MAP MUSIC
+-- ============================================
+
+function playMapMusic(url, volume)
+    stopMapMusic()
+
+    if not url or url == "" then return end
+
+    volume = volume or 0.5
+
+    -- Check if it's a URL or a local file path
+    if url:find("://") then
+        -- It's a URL (http:// or https://)
+        currentMapMusic = playSound(url, false)
+    else
+        -- It's a local file - try to load from map resource
+        currentMapMusic = playSound(url, false)
+    end
+
+    if currentMapMusic and isElement(currentMapMusic) then
+        setSoundVolume(currentMapMusic, volume)
+        setSoundLooped(currentMapMusic, true)
+        outputDebugString("[MapLoader] Playing map music: " .. url)
+    else
+        outputDebugString("[MapLoader] Failed to load map music: " .. url, 2)
+    end
+end
+
+function stopMapMusic()
+    if currentMapMusic and isElement(currentMapMusic) then
+        destroyElement(currentMapMusic)
+        currentMapMusic = nil
+    end
+end
+
+function toggleMapMusic()
+    mapMusicEnabled = not mapMusicEnabled
+    if not mapMusicEnabled then
+        stopMapMusic()
+        outputChatBox("#2980B9[MUSIC] #FFFFFFMap music disabled", 255, 255, 255, true)
+    else
+        outputChatBox("#2980B9[MUSIC] #FFFFFFMap music enabled", 255, 255, 255, true)
+    end
+end
+
+-- Command to toggle map music
+addCommandHandler("mapmusic", toggleMapMusic)
 
 -- ============================================
 -- RESOURCE START
